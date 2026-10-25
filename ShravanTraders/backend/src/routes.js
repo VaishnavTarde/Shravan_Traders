@@ -433,9 +433,19 @@ router.get('/products', async (req, res, next) => {
   try {
     const filter = (req.query.includeDeleted === 'true' && req.auth.role === 'owner') ? {} : { active: true };
     const products = await Product.find(filter).sort({ category: 1, nameEn: 1 }).lean();
-    if (req.auth.role !== 'owner') {
-      products.forEach(p => delete p.purchasePrice);
-    }
+    const host = req.get('host');
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${proto}://${host}`;
+
+    products.forEach(p => {
+      if (req.auth.role !== 'owner') {
+        delete p.purchasePrice;
+      }
+      if (p.imageUrl && p.imageUrl.includes('/uploads/')) {
+        const fn = p.imageUrl.split('/uploads/')[1];
+        p.imageUrl = `${baseUrl}/uploads/${fn}`;
+      }
+    });
     res.json({ products });
   } catch (e) { next(e); }
 });
@@ -509,21 +519,38 @@ router.delete('/products/:id/permanent', ownerOnly, async (req, res, next) => {
 // CUSTOMERS
 router.get('/customers', ownerOnly, async (req, res, next) => {
   try {
-    res.json({ customers: await User.find({ role: 'customer', active: true }).select('name mobile active language createdAt').sort({ name: 1 }).lean() });
+    const filter = req.query.includeInactive === 'true' ? { role: 'customer' } : { role: 'customer', active: true };
+    res.json({ customers: await User.find(filter).select('name mobile address active language createdAt').sort({ name: 1 }).lean() });
   } catch (e) { next(e); }
 });
 
 router.post('/customers', ownerOnly, async (req, res, next) => {
   try {
-    const { name, mobile, password } = req.body || {};
+    const { name, mobile, password, address } = req.body || {};
     if (!name || !mobile || !password || String(password).length < 6) {
       return res.status(400).json({ message: 'Name, mobile and password (min 6 chars) are required.' });
     }
-    const existing = await User.findOne({ mobile });
+    const cleanMobile = normalizeMobile(mobile);
+    const existing = await User.findOne({ $or: [{ mobile: cleanMobile }, { mobile }] });
     if (existing) return res.status(409).json({ message: 'A customer with this mobile number already exists.' });
-    const u = await User.create({ name, mobile, passwordHash: await bcrypt.hash(password, 12), role: 'customer' });
+    const u = await User.create({ name, mobile: cleanMobile, address: address || '', passwordHash: await bcrypt.hash(password, 12), role: 'customer', active: true });
     await Customer.create({ userId: u._id });
     res.status(201).json({ customer: publicUser(u) });
+  } catch (e) { next(e); }
+});
+
+router.patch('/customers/:id', ownerOnly, async (req, res, next) => {
+  try {
+    const { name, mobile, address, active } = req.body || {};
+    const update = {};
+    if (name !== undefined) update.name = String(name).trim();
+    if (mobile !== undefined) update.mobile = normalizeMobile(mobile);
+    if (address !== undefined) update.address = String(address).trim();
+    if (active !== undefined) update.active = Boolean(active);
+
+    const u = await User.findOneAndUpdate({ _id: req.params.id, role: 'customer' }, update, { new: true });
+    if (!u) return res.status(404).json({ message: 'Customer not found.' });
+    res.json({ message: 'Customer updated successfully.', customer: publicUser(u) });
   } catch (e) { next(e); }
 });
 
@@ -532,6 +559,16 @@ router.patch('/customers/:id/active', ownerOnly, async (req, res, next) => {
     const u = await User.findOneAndUpdate({ _id: req.params.id, role: 'customer' }, { active: !!req.body.active }, { new: true });
     if (!u) return res.status(404).json({ message: 'Customer not found.' });
     res.json({ customer: publicUser(u) });
+  } catch (e) { next(e); }
+});
+
+router.delete('/customers/:id', ownerOnly, async (req, res, next) => {
+  try {
+    const u = await User.findOne({ _id: req.params.id, role: 'customer' });
+    if (!u) return res.status(404).json({ message: 'Customer not found.' });
+    await Customer.deleteOne({ userId: u._id });
+    await User.deleteOne({ _id: u._id });
+    res.json({ message: 'Customer deleted successfully.' });
   } catch (e) { next(e); }
 });
 

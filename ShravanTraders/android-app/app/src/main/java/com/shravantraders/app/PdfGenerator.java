@@ -634,10 +634,10 @@ public class PdfGenerator {
         canvas.drawRect(40, y, 555, y + 25, headerBgPaint);
         canvas.drawRect(40, y, 555, y + 25, strokePaint);
         canvas.drawText("Date", 45, y + 17, boldPaint);
-        canvas.drawText("Ref/Type", 105, y + 17, boldPaint);
-        canvas.drawText("Description", 170, y + 17, boldPaint);
-        canvas.drawText("Debit (₹)", 370, y + 17, rightAlignBold);
-        canvas.drawText("Credit (₹)", 460, y + 17, rightAlignBold);
+        canvas.drawText("Ref/Type", 110, y + 17, boldPaint);
+        canvas.drawText("Description", 185, y + 17, boldPaint);
+        canvas.drawText("Debit (₹)", 380, y + 17, rightAlignBold);
+        canvas.drawText("Credit (₹)", 470, y + 17, rightAlignBold);
         canvas.drawText("Balance", 555, y + 17, rightAlignBold);
         y += 25;
 
@@ -654,27 +654,37 @@ public class PdfGenerator {
                     page = document.startPage(pageInfo);
                     canvas = page.getCanvas();
                     y = 50;
+
+                    canvas.drawRect(40, y, 555, y + 25, headerBgPaint);
+                    canvas.drawRect(40, y, 555, y + 25, strokePaint);
+                    canvas.drawText("Date", 45, y + 17, boldPaint);
+                    canvas.drawText("Ref/Type", 110, y + 17, boldPaint);
+                    canvas.drawText("Description", 185, y + 17, boldPaint);
+                    canvas.drawText("Debit (₹)", 380, y + 17, rightAlignBold);
+                    canvas.drawText("Credit (₹)", 470, y + 17, rightAlignBold);
+                    canvas.drawText("Balance", 555, y + 17, rightAlignBold);
+                    y += 25;
                 }
                 
                 String date = t.optString("date", "");
                 if (date.length() >= 10) date = date.substring(0, 10);
                 
                 String ref = t.optString("reference", "");
-                if (ref.length() > 10) ref = ref.substring(0, 9) + "..";
+                if (ref.length() > 9) ref = ref.substring(0, 8) + "..";
                 
                 String desc = t.optString("description", "");
-                if (desc.length() > 24) desc = desc.substring(0, 22) + "..";
+                if (desc.length() > 22) desc = desc.substring(0, 20) + "..";
 
                 canvas.drawText(date, 45, y, textPaint);
-                canvas.drawText(ref, 105, y, textPaint);
-                canvas.drawText(desc, 170, y, textPaint);
+                canvas.drawText(ref, 110, y, textPaint);
+                canvas.drawText(desc, 185, y, textPaint);
                 
                 double debit = t.optDouble("debit", 0);
                 double credit = t.optDouble("credit", 0);
                 double bal = t.optDouble("runningBalance", 0);
                 
-                if (debit > 0) canvas.drawText(String.format(Locale.US, "%.0f", debit), 370, y, rightAlignPaint);
-                if (credit > 0) canvas.drawText(String.format(Locale.US, "%.0f", credit), 460, y, rightAlignPaint);
+                if (debit > 0) canvas.drawText(String.format(Locale.US, "%.0f", debit), 380, y, rightAlignPaint);
+                if (credit > 0) canvas.drawText(String.format(Locale.US, "%.0f", credit), 470, y, rightAlignPaint);
                 canvas.drawText(String.format(Locale.US, "%.0f", bal), 555, y, rightAlignPaint);
 
                 y += 8;
