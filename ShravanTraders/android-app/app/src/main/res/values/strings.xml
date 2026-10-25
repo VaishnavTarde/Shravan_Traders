@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Shravan Traders</string>
+    <string name="shop_title">Shravan Traders (श्रवण ट्रेडर्स)</string>
+    <string name="shop_subtitle">Kendal Bk., Taluka - Rahuri • Vinayak Bhau Tarde</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="mobile">Mobile Number</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="full_name">Full Name</string>
+
+    <string name="dashboard">Dashboard</string>
+    <string name="products">Products</string>
+    <string name="billing">Billing</string>
+    <string name="purchases">Stock &amp; Intake</string>
+    <string name="customers">Customers</string>
+    <string name="expenses">Expenses</string>
+    <string name="reports">Reports</string>
+    <string name="settings">Settings</string>
+    <string name="catalogue">Catalogue</string>
+    <string name="my_bills">My Bills</string>
+    <string name="my_credit">My Credit &amp; Ledger</string>
+    <string name="my_profile">My Profile</string>
+</resources>
