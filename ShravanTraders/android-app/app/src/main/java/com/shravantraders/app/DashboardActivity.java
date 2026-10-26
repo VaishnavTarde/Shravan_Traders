@@ -650,7 +650,7 @@ public class DashboardActivity extends AppCompatActivity {
         avatar.setLayoutParams(new FrameLayout.LayoutParams(dp(80), dp(80)));
         avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);
         if (!profImg.isEmpty()) {
-            Glide.with(this).load(profImg).circleCrop().into(avatar);
+            Glide.with(this).load(Api.resolveImageUrl(this, profImg)).circleCrop().into(avatar);
         } else {
             avatar.setImageResource(R.drawable.shravan_traders_logo);
             avatar.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -854,7 +854,7 @@ public class DashboardActivity extends AppCompatActivity {
         previewImg.setScaleType(ImageView.ScaleType.CENTER_CROP);
         if (!profImg.isEmpty()) {
             previewImg.setVisibility(View.VISIBLE);
-            Glide.with(this).load(profImg).into(previewImg);
+            Glide.with(this).load(Api.resolveImageUrl(this, profImg)).into(previewImg);
         } else {
             previewImg.setVisibility(View.GONE);
         }
@@ -1338,8 +1338,9 @@ public class DashboardActivity extends AppCompatActivity {
                 img.setLayoutParams(new LinearLayout.LayoutParams(-1, dp(130)));
                 img.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 img.setBackgroundColor(Color.parseColor("#F1F5F9"));
-                if (!imageUrl.isEmpty()) {
-                    Glide.with(this).load(imageUrl).into(img);
+                String resImg = Api.resolveImageUrl(this, imageUrl);
+                if (!resImg.isEmpty()) {
+                    Glide.with(this).load(resImg).placeholder(R.drawable.bg_card).error(android.R.drawable.ic_menu_gallery).into(img);
                 } else {
                     img.setImageResource(android.R.drawable.ic_menu_gallery);
                 }
@@ -1404,8 +1405,9 @@ public class DashboardActivity extends AppCompatActivity {
                 imgView.setLayoutParams(imgLp);
                 imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                 imgView.setBackgroundColor(Color.parseColor("#F1F5F9"));
-                if (!imageUrl.isEmpty()) {
-                    Glide.with(this).load(imageUrl).into(imgView);
+                String resImg = Api.resolveImageUrl(this, imageUrl);
+                if (!resImg.isEmpty()) {
+                    Glide.with(this).load(resImg).placeholder(R.drawable.bg_card).error(android.R.drawable.ic_menu_gallery).into(imgView);
                 } else {
                     imgView.setImageResource(android.R.drawable.ic_menu_gallery);
                 }
@@ -1511,7 +1513,7 @@ public class DashboardActivity extends AppCompatActivity {
             imgView.setLayoutParams(imgLp);
             imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
             imgView.setBackgroundColor(Color.parseColor("#F8FAFC"));
-            Glide.with(this).load(imageUrl).into(imgView);
+            Glide.with(this).load(Api.resolveImageUrl(this, imageUrl)).placeholder(R.drawable.bg_card).error(android.R.drawable.ic_menu_gallery).into(imgView);
             box.addView(imgView);
         }
 
@@ -2645,6 +2647,28 @@ public class DashboardActivity extends AppCompatActivity {
                 // On click, show statement details
                 card.setOnClickListener(v -> showCustomerStatementDialog(c.optString("id"), name));
 
+                if ("owner".equalsIgnoreCase(userRole)) {
+                    LinearLayout btnRow = new LinearLayout(this);
+                    btnRow.setOrientation(LinearLayout.HORIZONTAL);
+                    LinearLayout.LayoutParams brp = new LinearLayout.LayoutParams(-1, dp(40));
+                    brp.topMargin = dp(8);
+
+                    Button stmtBtn = createStyledButton(currentLang.equals("mr") ? "📋 खातेवही" : "📋 Statement", Color.parseColor("#0284C7"), () -> showCustomerStatementDialog(c.optString("id"), name));
+                    btnRow.addView(stmtBtn, new LinearLayout.LayoutParams(0, -1, 1.2f));
+
+                    // Only show Edit & Delete for real customer accounts (not walkin)
+                    if (!"walkin".equals(c.optString("id"))) {
+                        Button editBtn = createStyledButton(currentLang.equals("mr") ? "✏️ संपादन" : "✏️ Edit", Color.parseColor("#D97706"), () -> showEditCustomerDialog(c));
+                        Button delBtn = createStyledButton(currentLang.equals("mr") ? "🗑️ हटवा" : "🗑️ Delete", Color.parseColor("#DC2626"), () -> confirmDeleteCustomer(c.optString("id"), name));
+                        View s1 = new View(this); btnRow.addView(s1, new LinearLayout.LayoutParams(dp(6), 1));
+                        btnRow.addView(editBtn, new LinearLayout.LayoutParams(0, -1, 1.0f));
+                        View s2 = new View(this); btnRow.addView(s2, new LinearLayout.LayoutParams(dp(6), 1));
+                        btnRow.addView(delBtn, new LinearLayout.LayoutParams(0, -1, 1.0f));
+                    }
+
+                    card.addView(btnRow, brp);
+                }
+
                 listContainer.addView(card, cp);
             } catch (Exception ignored) {}
         }
@@ -2652,6 +2676,89 @@ public class DashboardActivity extends AppCompatActivity {
         if (count == 0) {
             listContainer.addView(createTextView("No customers found.", 14, false, Color.parseColor("#64748B")));
         }
+    }
+
+    private void showEditCustomerDialog(JSONObject c) {
+        String id = c.optString("id");
+        String currentName = c.optString("name", "");
+        String currentMobile = c.optString("mobile", "");
+        boolean currentActive = c.optBoolean("active", true);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(16), dp(20), dp(16));
+
+        box.addView(createTextView(currentLang.equals("mr") ? "ग्राहकाचे नाव (Customer Name)" : "Customer Name", 13, true, Color.parseColor("#475569")));
+        EditText nameInput = createFormInput("Full Name", currentName, InputType.TYPE_CLASS_TEXT);
+        box.addView(nameInput);
+
+        box.addView(createTextView(currentLang.equals("mr") ? "मोबाईल नंबर (Mobile Number)" : "Mobile Number", 13, true, Color.parseColor("#475569")));
+        EditText mobileInput = createFormInput("Mobile Number", currentMobile, InputType.TYPE_CLASS_PHONE);
+        box.addView(mobileInput);
+
+        CheckBox activeBox = new CheckBox(this);
+        activeBox.setText(currentLang.equals("mr") ? "सक्रिय खाते (Active Account)" : "Active Customer Account");
+        activeBox.setChecked(currentActive);
+        activeBox.setTextSize(14);
+        activeBox.setTextColor(Color.parseColor("#1E293B"));
+        activeBox.setPadding(dp(4), dp(8), 0, dp(12));
+        box.addView(activeBox);
+
+        new AlertDialog.Builder(this)
+            .setTitle(currentLang.equals("mr") ? "ग्राहक माहिती संपादन (Manage Customer)" : "Manage Customer Account")
+            .setView(box)
+            .setPositiveButton(currentLang.equals("mr") ? "सेव्ह करा" : "Save Changes", (dialog, which) -> {
+                String newName = nameInput.getText().toString().trim();
+                String newMobile = mobileInput.getText().toString().trim();
+                boolean isActive = activeBox.isChecked();
+
+                if (newName.isEmpty() || newMobile.isEmpty()) {
+                    Toast.makeText(this, "Name and mobile cannot be empty", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                new Thread(() -> {
+                    try {
+                        JSONObject body = new JSONObject();
+                        body.put("name", newName);
+                        body.put("mobile", newMobile);
+                        body.put("active", isActive);
+
+                        JSONObject res = Api.request(this, "PATCH", "/api/customers/" + id, body);
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, res.optString("message", "Customer updated successfully!"), Toast.LENGTH_SHORT).show();
+                            loadCustomersAndCredit();
+                        });
+                    } catch (Exception ex) {
+                        runOnUiThread(() -> Toast.makeText(this, "Update failed: " + ex.getMessage(), Toast.LENGTH_LONG).show());
+                    }
+                }).start();
+            })
+            .setNegativeButton(currentLang.equals("mr") ? "रद्द करा" : "Cancel", null)
+            .show();
+    }
+
+    private void confirmDeleteCustomer(String customerId, String customerName) {
+        new AlertDialog.Builder(this)
+            .setTitle(currentLang.equals("mr") ? "ग्राहक खाते हटवा (Delete Customer)" : "Delete Customer Account")
+            .setMessage((currentLang.equals("mr")
+                    ? "तुम्हाला नक्की '" + customerName + "' चे खाते हटवायचे आहे का?\n\nयामुळे ग्राहक खाते हटवले जाईल. मागील व्यवहार हिशोबासाठी सुरक्षित राहतील."
+                    : "Are you sure you want to delete customer '" + customerName + "'?\n\nThis will remove the customer account. Past ledger transactions will remain safe for business history."))
+            .setPositiveButton(currentLang.equals("mr") ? "हटवा (Delete)" : "Delete", (dialog, which) -> {
+                new Thread(() -> {
+                    try {
+                        JSONObject res = Api.request(this, "DELETE", "/api/customers/" + customerId, null);
+                        runOnUiThread(() -> {
+                            Toast.makeText(this, res.optString("message", "Customer deleted successfully!"), Toast.LENGTH_SHORT).show();
+                            loadCustomersAndCredit();
+                        });
+                    } catch (Exception ex) {
+                        runOnUiThread(() -> Toast.makeText(this, "Delete failed: " + ex.getMessage(), Toast.LENGTH_LONG).show());
+                    }
+                }).start();
+            })
+            .setNegativeButton(currentLang.equals("mr") ? "रद्द करा" : "Cancel", null)
+            .show();
     }
 
     private String selectedDatePeriod = "month";
