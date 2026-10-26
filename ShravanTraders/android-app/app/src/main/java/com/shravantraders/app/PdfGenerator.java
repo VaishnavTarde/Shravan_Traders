@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.pdf.PdfDocument;
@@ -57,31 +58,25 @@ public class PdfGenerator {
         Paint rightAlignBold = new Paint(boldPaint);
         rightAlignBold.setTextAlign(Paint.Align.RIGHT);
 
-        int y = 50;
-
-        try {
-            Bitmap logoBmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.shravan_traders_logo);
-            if (logoBmp != null) {
-                int logoW = 75;
-                int logoH = (int) (logoW * ((float) logoBmp.getHeight() / logoBmp.getWidth()));
-                Bitmap scaled = Bitmap.createScaledBitmap(logoBmp, logoW, logoH, true);
-                canvas.drawBitmap(scaled, 40, y - 5, null);
-            }
-        } catch (Exception ignored) {}
+        int logoSize = 90;
+        int logoTop = 42;
+        drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
         String shopName = prefs.getString("shopName", "SHRAVAN TRADERS (श्रवण ट्रेडर्स)");
         String shopDesc = prefs.getString("shopDesc", "Cattle Feed Shop • Kendal Bk., Taluka - Rahuri, Dist - Ahilyanagar");
         String shopContact = prefs.getString("shopContact", "Proprietor: Vinayak Bhau Tarde | Contact: +91 8390529481");
 
-        // Header
-        canvas.drawText(shopName, 125, y + 10, headerPaint);
-        y += 28;
-        canvas.drawText(shopDesc, 125, y, subHeaderPaint);
-        y += 16;
-        canvas.drawText(shopContact, 125, y, subHeaderPaint);
+        // Header Text aligned to the right of the logo
+        int textLeft = 40 + logoSize + 14;
+        int y = 68;
+        canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
+        canvas.drawText(shopDesc, textLeft, y, subHeaderPaint);
+        y += 18;
+        canvas.drawText(shopContact, textLeft, y, subHeaderPaint);
 
+        y = Math.max(y + 20, logoTop + logoSize + 12);
         canvas.drawLine(40, y, 555, y, linePaint);
         y += 25;
 
@@ -311,28 +306,23 @@ public class PdfGenerator {
         Paint headerBgPaint = new Paint();
         headerBgPaint.setColor(Color.rgb(241, 245, 249));
 
-        int y = 50;
-
-        try {
-            Bitmap logoBmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.shravan_traders_logo);
-            if (logoBmp != null) {
-                int logoW = 75;
-                int logoH = (int) (logoW * ((float) logoBmp.getHeight() / logoBmp.getWidth()));
-                Bitmap scaled = Bitmap.createScaledBitmap(logoBmp, logoW, logoH, true);
-                canvas.drawBitmap(scaled, 40, y - 5, null);
-            }
-        } catch (Exception ignored) {}
+        int logoSize = 90;
+        int logoTop = 42;
+        drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
         String shopName = prefs.getString("shopName", "SHRAVAN TRADERS (श्रवण ट्रेडर्स)");
 
-        // Document Header
-        canvas.drawText(shopName, 125, y + 10, headerPaint);
-        y += 28;
-        canvas.drawText("FINANCIAL REPORT | Period: " + dateRangeTitle, 125, y, boldPaint);
-        y += 16;
-        canvas.drawText("Generated on: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date()), 125, y, subHeaderPaint);
+        // Document Header aligned to the right of the logo
+        int textLeft = 40 + logoSize + 14;
+        int y = 68;
+        canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
+        canvas.drawText("FINANCIAL REPORT | Period: " + dateRangeTitle, textLeft, y, boldPaint);
+        y += 18;
+        canvas.drawText("Generated on: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new Date()), textLeft, y, subHeaderPaint);
+
+        y = Math.max(y + 20, logoTop + logoSize + 12);
         canvas.drawLine(40, y, 555, y, linePaint);
         y += 20;
 
@@ -573,29 +563,24 @@ public class PdfGenerator {
         Paint rightAlignBold = new Paint(boldPaint);
         rightAlignBold.setTextAlign(Paint.Align.RIGHT);
 
-        int y = 50;
-
-        try {
-            Bitmap logoBmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.shravan_traders_logo);
-            if (logoBmp != null) {
-                int logoW = 75;
-                int logoH = (int) (logoW * ((float) logoBmp.getHeight() / logoBmp.getWidth()));
-                Bitmap scaled = Bitmap.createScaledBitmap(logoBmp, logoW, logoH, true);
-                canvas.drawBitmap(scaled, 40, y - 5, null);
-            }
-        } catch (Exception ignored) {}
+        int logoSize = 90;
+        int logoTop = 42;
+        drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
         String shopName = prefs.getString("shopName", "SHRAVAN TRADERS (श्रवण ट्रेडर्स)");
         String shopDesc = prefs.getString("shopDesc", "Cattle Feed Shop • Kendal Bk., Taluka - Rahuri, Dist - Ahilyanagar");
         String shopContact = prefs.getString("shopContact", "Proprietor: Vinayak Bhau Tarde | Contact: +91 8390529481");
 
-        canvas.drawText(shopName, 125, y + 10, headerPaint);
-        y += 28;
-        canvas.drawText(shopDesc, 125, y, subHeaderPaint);
-        y += 16;
-        canvas.drawText(shopContact, 125, y, subHeaderPaint);
+        int textLeft = 40 + logoSize + 14;
+        int y = 68;
+        canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
+        canvas.drawText(shopDesc, textLeft, y, subHeaderPaint);
+        y += 18;
+        canvas.drawText(shopContact, textLeft, y, subHeaderPaint);
+
+        y = Math.max(y + 20, logoTop + logoSize + 12);
         canvas.drawLine(40, y, 555, y, linePaint);
         y += 25;
 
@@ -723,5 +708,21 @@ public class PdfGenerator {
         if (n < 100000) return convertNumberToWords(n / 1000).replace(" Rupees Only", "") + " Thousand" + ((n % 1000 != 0) ? " " + convertNumberToWords(n % 1000).replace(" Rupees Only", "") : "") + " Rupees Only";
         if (n < 10000000) return convertNumberToWords(n / 100000).replace(" Rupees Only", "") + " Lakh" + ((n % 100000 != 0) ? " " + convertNumberToWords(n % 100000).replace(" Rupees Only", "") : "") + " Rupees Only";
         return convertNumberToWords(n / 10000000).replace(" Rupees Only", "") + " Crore" + ((n % 10000000 != 0) ? " " + convertNumberToWords(n % 10000000).replace(" Rupees Only", "") : "") + " Rupees Only";
+    }
+
+    private static void drawCrispLogo(Context context, Canvas canvas, int left, int top, int size) {
+        try {
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inScaled = false;
+            opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            Bitmap logoBmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.shravan_traders_logo, opts);
+            if (logoBmp != null) {
+                Paint logoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+                logoPaint.setDither(true);
+                Rect srcRect = new Rect(0, 0, logoBmp.getWidth(), logoBmp.getHeight());
+                Rect dstRect = new Rect(left, top, left + size, top + size);
+                canvas.drawBitmap(logoBmp, srcRect, dstRect, logoPaint);
+            }
+        } catch (Exception ignored) {}
     }
 }
