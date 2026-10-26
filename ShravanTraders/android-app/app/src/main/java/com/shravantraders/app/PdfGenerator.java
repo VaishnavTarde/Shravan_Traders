@@ -58,8 +58,8 @@ public class PdfGenerator {
         Paint rightAlignBold = new Paint(boldPaint);
         rightAlignBold.setTextAlign(Paint.Align.RIGHT);
 
-        int logoSize = 90;
-        int logoTop = 42;
+        int logoSize = 98;
+        int logoTop = 38;
         drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
@@ -69,7 +69,7 @@ public class PdfGenerator {
 
         // Header Text aligned to the right of the logo
         int textLeft = 40 + logoSize + 14;
-        int y = 68;
+        int y = 66;
         canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
         canvas.drawText(shopDesc, textLeft, y, subHeaderPaint);
@@ -306,8 +306,8 @@ public class PdfGenerator {
         Paint headerBgPaint = new Paint();
         headerBgPaint.setColor(Color.rgb(241, 245, 249));
 
-        int logoSize = 90;
-        int logoTop = 42;
+        int logoSize = 98;
+        int logoTop = 38;
         drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
@@ -315,7 +315,7 @@ public class PdfGenerator {
 
         // Document Header aligned to the right of the logo
         int textLeft = 40 + logoSize + 14;
-        int y = 68;
+        int y = 66;
         canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
         canvas.drawText("FINANCIAL REPORT | Period: " + dateRangeTitle, textLeft, y, boldPaint);
@@ -563,8 +563,8 @@ public class PdfGenerator {
         Paint rightAlignBold = new Paint(boldPaint);
         rightAlignBold.setTextAlign(Paint.Align.RIGHT);
 
-        int logoSize = 90;
-        int logoTop = 42;
+        int logoSize = 98;
+        int logoTop = 38;
         drawCrispLogo(context, canvas, 40, logoTop, logoSize);
 
         SharedPreferences prefs = context.getSharedPreferences("ShopPrefs", Context.MODE_PRIVATE);
@@ -573,7 +573,7 @@ public class PdfGenerator {
         String shopContact = prefs.getString("shopContact", "Proprietor: Vinayak Bhau Tarde | Contact: +91 8390529481");
 
         int textLeft = 40 + logoSize + 14;
-        int y = 68;
+        int y = 66;
         canvas.drawText(shopName, textLeft, y, headerPaint);
         y += 24;
         canvas.drawText(shopDesc, textLeft, y, subHeaderPaint);
