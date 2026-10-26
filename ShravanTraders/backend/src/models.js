@@ -11,9 +11,9 @@ const userSchema = new Schema({
   language: { type: String, enum: ['en', 'mr'], default: 'mr' },
   mustChangePassword: { type: Boolean, default: false },
   googleId: { type: String, default: '' },
-  resetTokenHash: { type: String, select: false, default: '' },
+  resetTokenHash: { type: String, select: false, default: null },
   resetTokenExpires: { type: Date, default: null },
-  otpCodeHash: { type: String, select: false, default: '' },
+  otpCodeHash: { type: String, select: false, default: null },
   otpExpires: { type: Date, default: null },
   address: { type: String, default: '' },
   profileImageUrl: { type: String, default: '' }

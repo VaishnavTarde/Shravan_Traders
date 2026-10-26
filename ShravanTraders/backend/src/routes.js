@@ -252,8 +252,8 @@ router.post('/auth/verify-reset-code', [
     const resetToken = crypto.randomBytes(32).toString('hex');
     u.resetTokenHash = await bcrypt.hash(resetToken, 10);
     u.resetTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
-    u.otpCodeHash = undefined;
-    u.otpExpires = undefined;
+    u.otpCodeHash = null;
+    u.otpExpires = null;
     await u.save();
 
     res.json({ valid: true, resetToken, message: 'Verification code confirmed. You can now enter your new password.' });
@@ -295,10 +295,10 @@ router.post('/auth/reset-password', [
 
     u.passwordHash = await bcrypt.hash(newPassword, 12);
     u.mustChangePassword = false;
-    u.resetTokenHash = undefined;
-    u.resetTokenExpires = undefined;
-    u.otpCodeHash = undefined;
-    u.otpExpires = undefined;
+    u.resetTokenHash = null;
+    u.resetTokenExpires = null;
+    u.otpCodeHash = null;
+    u.otpExpires = null;
     await u.save();
 
     res.json({ message: 'Password reset successfully. Please log in with your new password.' });
