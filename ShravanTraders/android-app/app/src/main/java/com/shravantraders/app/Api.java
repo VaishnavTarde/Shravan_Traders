@@ -177,10 +177,23 @@ public final class Api {
             }
         }
 
+        if (responseCode == 401) {
+            String msg = result.optString("message", "Session expired. Please log in again.");
+            clearSession(context);
+            throw new SessionExpiredException(msg);
+        }
+
         if (responseCode < 200 || responseCode >= 300) {
             throw new IOException(result.optString("message", "Request failed (" + responseCode + ")"));
         }
 
         return result;
     }
+
+    public static class SessionExpiredException extends IOException {
+        public SessionExpiredException(String message) {
+            super(message);
+        }
+    }
 }
+

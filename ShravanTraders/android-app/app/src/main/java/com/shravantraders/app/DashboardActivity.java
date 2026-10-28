@@ -335,10 +335,30 @@ public class DashboardActivity extends AppCompatActivity {
         menuBtn.setPadding(dp(8), dp(0), dp(4), dp(0));
         menuBtn.setOnClickListener(v -> loadSettingsView());
 
+        TextView logoutTopBtn = new TextView(this);
+        logoutTopBtn.setText("🚪");
+        logoutTopBtn.setTextSize(18);
+        logoutTopBtn.setPadding(dp(8), dp(0), dp(4), dp(0));
+        logoutTopBtn.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                .setTitle(currentLang.equals("mr") ? "लॉगआउट करा" : "Logout")
+                .setMessage(currentLang.equals("mr") ? "तुम्हाला खात्री आहे की तुम्ही साइन आउट करू इच्छिता?" : "Are you sure you want to sign out?")
+                .setPositiveButton(currentLang.equals("mr") ? "लॉगआउट (Logout)" : "Logout", (d, w) -> {
+                    Api.clearSession(this);
+                    Intent intent = new Intent(this, LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .setNegativeButton(currentLang.equals("mr") ? "रद्द करा" : "Cancel", null)
+                .show();
+        });
+
         appBar.addView(roleBadgeView);
         appBar.addView(langBtn);
         appBar.addView(themeBtn);
         appBar.addView(menuBtn);
+        appBar.addView(logoutTopBtn);
 
         rootLayout.addView(appBar);
 
@@ -478,7 +498,11 @@ public class DashboardActivity extends AppCompatActivity {
 
                     metricsCard.addView(grid);
                 });
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                if (e instanceof Api.SessionExpiredException || (e.getMessage() != null && (e.getMessage().contains("Session expired") || e.getMessage().contains("Please log in")))) {
+                    onSessionExpired(e.getMessage());
+                }
+            }
         }).start();
 
         // Customer Quick Access Buttons
@@ -602,6 +626,31 @@ public class DashboardActivity extends AppCompatActivity {
             .show();
     }
 
+    private boolean isSessionExpiredShowing = false;
+
+    private void onSessionExpired(String msg) {
+        runOnUiThread(() -> {
+            if (isSessionExpiredShowing || isFinishing() || isDestroyed()) return;
+            isSessionExpiredShowing = true;
+            Api.clearSession(this);
+
+            new AlertDialog.Builder(this)
+                .setTitle(currentLang.equals("mr") ? "सत्र कालबाह्य झाले (Session Expired)" : "Session Expired")
+                .setMessage(currentLang.equals("mr") 
+                    ? "तुमचे लॉगिन सत्र कालबाह्य झाले आहे. कृपया पुन्हा लॉगिन करा." 
+                    : "Your login session has expired. Please log in again to continue.")
+                .setCancelable(false)
+                .setPositiveButton(currentLang.equals("mr") ? "लॉगिन करा (Log In)" : "Log In Again", (d, w) -> {
+                    isSessionExpiredShowing = false;
+                    Intent intent = new Intent(this, LoginActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
+                    finish();
+                })
+                .show();
+        });
+    }
+
     private void loadCustomerProfile() {
         activeTab = "profile";
         buildBottomNav();
@@ -619,10 +668,28 @@ public class DashboardActivity extends AppCompatActivity {
                 runOnUiThread(() -> renderCustomerProfileUi(cust, summary));
             } catch (Exception e) {
                 runOnUiThread(() -> {
+                    if (e instanceof Api.SessionExpiredException || (e.getMessage() != null && (e.getMessage().contains("Session expired") || e.getMessage().contains("Please log in")))) {
+                        onSessionExpired(e.getMessage());
+                        return;
+                    }
+
                     mainContentContainer.removeAllViews();
                     mainContentContainer.addView(createTextView("Error loading profile: " + e.getMessage(), 14, false, Color.parseColor("#DC2626")));
-                    Button retry = createStyledButton("Retry", Color.parseColor("#0284C7"), this::loadCustomerProfile);
+
+                    Button retry = createStyledButton(currentLang.equals("mr") ? "पुन्हा प्रयत्न करा (Retry)" : "Retry", Color.parseColor("#0284C7"), this::loadCustomerProfile);
                     mainContentContainer.addView(retry, new LinearLayout.LayoutParams(-1, dp(46)));
+
+                    View space = new View(this);
+                    mainContentContainer.addView(space, new LinearLayout.LayoutParams(1, dp(12)));
+
+                    Button btnSignout = createStyledButton("🚪 " + (currentLang.equals("mr") ? "लॉगआउट करा / पुन्हा लॉगिन करा" : "Sign Out / Log In Again"), Color.parseColor("#DC2626"), () -> {
+                        Api.clearSession(this);
+                        Intent intent = new Intent(this, LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    });
+                    mainContentContainer.addView(btnSignout, new LinearLayout.LayoutParams(-1, dp(46)));
                 });
             }
         }).start();
@@ -5499,7 +5566,42 @@ public class DashboardActivity extends AppCompatActivity {
 
             mainContentContainer.addView(optsCard, new LinearLayout.LayoutParams(-1, -2));
         } else {
-            loadCustomerProfile(); // Fallback if called as customer somehow
+            activeTab = "settings";
+            buildBottomNav();
+            statusTextView.setText(currentLang.equals("mr") ? "सेटिंग्ज व प्रोफाईल" : "Settings & Profile");
+            mainContentContainer.removeAllViews();
+
+            LinearLayout custOptsCard = new LinearLayout(this);
+            custOptsCard.setOrientation(LinearLayout.VERTICAL);
+            custOptsCard.setPadding(dp(16), dp(16), dp(16), dp(16));
+            custOptsCard.setBackgroundResource(R.drawable.bg_card);
+
+            custOptsCard.addView(buildOptionRow("👤", currentLang.equals("mr") ? "माझे प्रोफाईल" : "My Profile", currentLang.equals("mr") ? "नाव, संपर्क, पत्ता व खाते तपशील" : "View account details & statement", this::loadCustomerProfile));
+            custOptsCard.addView(buildOptionRow("🧾", currentLang.equals("mr") ? "माझी खरेदी बिले" : "My Purchase Bills", currentLang.equals("mr") ? "खरेदी इतिहास व बिले तपासा" : "View invoices & purchase history", this::loadCustomerBills));
+            custOptsCard.addView(buildOptionRow("🌐", currentLang.equals("mr") ? "भाषा बदला (Change Language)" : "Change Language", currentLang.equals("mr") ? "सध्या: मराठी ➔ इंग्रजीत बदला" : "Currently: English ➔ Change to Marathi", () -> {
+                LocaleHelper.setLanguage(this, currentLang.equals("mr") ? "en" : "mr");
+                recreate();
+            }));
+            custOptsCard.addView(buildOptionRow("🌙", currentLang.equals("mr") ? "थीम बदला (Dark/Light Mode)" : "Toggle Theme", currentLang.equals("mr") ? "डार्क किंवा लाईट मोड" : "Switch dark or light mode", () -> {
+                LocaleHelper.setThemeMode(this, LocaleHelper.isDarkMode(this) ? "light" : "dark");
+                recreate();
+            }));
+            custOptsCard.addView(buildOptionRow("🚪", currentLang.equals("mr") ? "लॉगआउट करा (Sign Out)" : "Logout", currentLang.equals("mr") ? "खात्यातून सुरक्षितपणे बाहेर पडा" : "Sign out securely from customer account", () -> {
+                new AlertDialog.Builder(this)
+                    .setTitle(currentLang.equals("mr") ? "लॉगआउट" : "Logout")
+                    .setMessage(currentLang.equals("mr") ? "तुम्हाला खात्री आहे की तुम्ही साइन आउट करू इच्छिता?" : "Are you sure you want to sign out?")
+                    .setPositiveButton(currentLang.equals("mr") ? "लॉगआउट" : "Logout", (d, w) -> {
+                        Api.clearSession(this);
+                        Intent intent = new Intent(this, LoginActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    })
+                    .setNegativeButton(currentLang.equals("mr") ? "रद्द करा" : "Cancel", null)
+                    .show();
+            }));
+
+            mainContentContainer.addView(custOptsCard, new LinearLayout.LayoutParams(-1, -2));
         }
     }
 
