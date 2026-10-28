@@ -335,10 +335,20 @@ public class DashboardActivity extends AppCompatActivity {
         menuBtn.setPadding(dp(8), dp(0), dp(4), dp(0));
         menuBtn.setOnClickListener(v -> loadSettingsView());
 
-        TextView logoutTopBtn = new TextView(this);
-        logoutTopBtn.setText("🚪");
-        logoutTopBtn.setTextSize(18);
-        logoutTopBtn.setPadding(dp(8), dp(0), dp(4), dp(0));
+        ImageView logoutTopBtn = new ImageView(this);
+        logoutTopBtn.setImageResource(R.drawable.ic_logout);
+        logoutTopBtn.setColorFilter(Color.WHITE);
+        logoutTopBtn.setContentDescription(currentLang.equals("mr") ? "लॉगआउट करा" : "Logout");
+
+        GradientDrawable logoutBg = new GradientDrawable();
+        logoutBg.setShape(GradientDrawable.OVAL);
+        logoutBg.setColor(Color.parseColor("#B91C1C"));
+        logoutTopBtn.setBackground(logoutBg);
+        logoutTopBtn.setPadding(dp(7), dp(7), dp(7), dp(7));
+
+        LinearLayout.LayoutParams logoutParams = new LinearLayout.LayoutParams(dp(36), dp(36));
+        logoutParams.leftMargin = dp(6);
+        logoutTopBtn.setLayoutParams(logoutParams);
         logoutTopBtn.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
                 .setTitle(currentLang.equals("mr") ? "लॉगआउट करा" : "Logout")
@@ -682,7 +692,7 @@ public class DashboardActivity extends AppCompatActivity {
                     View space = new View(this);
                     mainContentContainer.addView(space, new LinearLayout.LayoutParams(1, dp(12)));
 
-                    Button btnSignout = createStyledButton("🚪 " + (currentLang.equals("mr") ? "लॉगआउट करा / पुन्हा लॉगिन करा" : "Sign Out / Log In Again"), Color.parseColor("#DC2626"), () -> {
+                    Button btnSignout = createStyledButton(currentLang.equals("mr") ? "लॉगआउट करा / पुन्हा लॉगिन करा" : "Sign Out / Log In Again", Color.parseColor("#DC2626"), () -> {
                         Api.clearSession(this);
                         Intent intent = new Intent(this, LoginActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -893,9 +903,23 @@ public class DashboardActivity extends AppCompatActivity {
         row.setPadding(0, dp(12), 0, dp(12));
         row.setOnClickListener(v -> onClick.run());
 
-        TextView tvIcon = createTextView(icon, 20, false, isDark ? Color.WHITE : Color.BLACK);
-        tvIcon.setPadding(0, 0, dp(14), 0);
-        row.addView(tvIcon);
+        if ("🚪".equals(icon)) {
+            ImageView ivIcon = new ImageView(this);
+            ivIcon.setImageResource(R.drawable.ic_logout);
+            ivIcon.setColorFilter(Color.parseColor("#EF4444"));
+            GradientDrawable redCircle = new GradientDrawable();
+            redCircle.setShape(GradientDrawable.OVAL);
+            redCircle.setColor(isDark ? Color.parseColor("#450A0A") : Color.parseColor("#FEE2E2"));
+            ivIcon.setBackground(redCircle);
+            ivIcon.setPadding(dp(6), dp(6), dp(6), dp(6));
+            LinearLayout.LayoutParams ivParams = new LinearLayout.LayoutParams(dp(32), dp(32));
+            ivParams.rightMargin = dp(14);
+            row.addView(ivIcon, ivParams);
+        } else {
+            TextView tvIcon = createTextView(icon, 20, false, isDark ? Color.WHITE : Color.BLACK);
+            tvIcon.setPadding(0, 0, dp(14), 0);
+            row.addView(tvIcon);
+        }
 
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
