@@ -48,10 +48,11 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void buildUi() {
+        boolean isDark = LocaleHelper.isDarkMode(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(24), dp(20), dp(24), dp(20));
-        root.setBackgroundColor(Color.parseColor("#FFF9F2"));
+        root.setBackgroundColor(isDark ? Color.parseColor("#0F172A") : Color.parseColor("#FFF9F2"));
         root.setGravity(Gravity.CENTER_VERTICAL);
 
         // Language Switcher Top Right
@@ -83,13 +84,13 @@ public class LoginActivity extends AppCompatActivity {
         titleView.setText(lang.equals("mr") ? "श्रवण ट्रेडर्स" : "Shravan Traders");
         titleView.setTextSize(26);
         titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setTextColor(Color.parseColor("#1E293B"));
+        titleView.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
         titleView.setGravity(Gravity.CENTER);
         root.addView(titleView);
 
         subTitleView = new TextView(this);
         subTitleView.setText(lang.equals("mr") ? "पशुआहार व पेंड केंद्र • केंडल बु., राहुरी" : "Cattle Feed Shop • Kendal Bk., Rahuri");
-        subTitleView.setTextColor(Color.parseColor("#64748B"));
+        subTitleView.setTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
         subTitleView.setTextSize(13);
         subTitleView.setGravity(Gravity.CENTER);
         subTitleView.setPadding(0, dp(2), 0, dp(14));
@@ -105,12 +106,12 @@ public class LoginActivity extends AppCompatActivity {
         loginHeading.setText(lang.equals("mr") ? "ग्राहक लॉगिन (Customer Login)" : "Customer Login");
         loginHeading.setTextSize(18);
         loginHeading.setTypeface(null, Typeface.BOLD);
-        loginHeading.setTextColor(Color.parseColor("#1E293B"));
+        loginHeading.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
         card.addView(loginHeading);
 
         instructionView = new TextView(this);
         instructionView.setText(lang.equals("mr") ? "पुन्हा स्वागत आहे! लॉगिन करा:" : "Welcome back! Login to continue:");
-        instructionView.setTextColor(Color.parseColor("#64748B"));
+        instructionView.setTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
         instructionView.setTextSize(13);
         instructionView.setPadding(0, dp(2), 0, dp(14));
         card.addView(instructionView);
@@ -132,8 +133,8 @@ public class LoginActivity extends AppCompatActivity {
         passwordInput.setSingleLine(true);
         passwordInput.setHint(lang.equals("mr") ? "तुमचा पासवर्ड टाका" : "Enter password");
         passwordInput.setTextSize(15);
-        passwordInput.setTextColor(Color.parseColor("#1E293B"));
-        passwordInput.setHintTextColor(Color.parseColor("#94A3B8"));
+        passwordInput.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
+        passwordInput.setHintTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
         passwordInput.setBackground(null);
         passwordInput.setPadding(dp(14), dp(12), dp(14), dp(12));
         passwordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
@@ -141,6 +142,7 @@ public class LoginActivity extends AppCompatActivity {
         TextView eyeToggle = new TextView(this);
         eyeToggle.setText("👁");
         eyeToggle.setTextSize(18);
+        eyeToggle.setTextColor(isDark ? Color.parseColor("#CBD5E1") : Color.parseColor("#64748B"));
         eyeToggle.setPadding(dp(12), dp(12), dp(16), dp(12));
         eyeToggle.setOnClickListener(v -> {
             isPasswordVisible = !isPasswordVisible;
@@ -205,10 +207,10 @@ public class LoginActivity extends AppCompatActivity {
         googleButton = new Button(this);
         googleButton.setText("G  Continue with Google");
         googleButton.setAllCaps(false);
-        googleButton.setTextColor(Color.parseColor("#1E293B"));
+        googleButton.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
         googleButton.setTextSize(14);
         googleButton.setTypeface(null, Typeface.BOLD);
-        googleButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F1F5F9")));
+        googleButton.setBackgroundTintList(ColorStateList.valueOf(isDark ? Color.parseColor("#1E293B") : Color.parseColor("#F1F5F9")));
         card.addView(googleButton, new LinearLayout.LayoutParams(-1, dp(46)));
         googleButton.setOnClickListener(v -> doGoogleSignIn());
 
@@ -217,7 +219,7 @@ public class LoginActivity extends AppCompatActivity {
         // Owner Setup Link
         ownerSetupLink = new TextView(this);
         ownerSetupLink.setText(lang.equals("mr") ? "दुकान मालक? पहिला मालक सेटअप (Owner Setup)" : "Shop Owner? Initial Owner Setup");
-        ownerSetupLink.setTextColor(Color.parseColor("#64748B"));
+        ownerSetupLink.setTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
         ownerSetupLink.setTextSize(13);
         ownerSetupLink.setGravity(Gravity.CENTER);
         ownerSetupLink.setPadding(0, dp(14), 0, 0);
@@ -231,9 +233,10 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void addLabel(String text, LinearLayout container) {
+        boolean isDark = LocaleHelper.isDarkMode(this);
         TextView label = new TextView(this);
         label.setText(text);
-        label.setTextColor(Color.parseColor("#1E293B"));
+        label.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
         label.setTextSize(13);
         label.setTypeface(null, Typeface.BOLD);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
@@ -242,12 +245,13 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private EditText createEditText(String hint, LinearLayout container) {
+        boolean isDark = LocaleHelper.isDarkMode(this);
         EditText e = new EditText(this);
         e.setSingleLine(true);
         e.setHint(hint);
         e.setTextSize(15);
-        e.setTextColor(Color.parseColor("#1E293B"));
-        e.setHintTextColor(Color.parseColor("#94A3B8"));
+        e.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
+        e.setHintTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
         e.setBackgroundResource(R.drawable.bg_card);
         e.setPadding(dp(14), dp(12), dp(14), dp(12));
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(48));
