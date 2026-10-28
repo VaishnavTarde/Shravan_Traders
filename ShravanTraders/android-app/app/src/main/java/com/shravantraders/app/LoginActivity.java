@@ -630,28 +630,15 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void doGoogleSignIn() {
-        toast("Initiating Google Sign-In...");
-        new Thread(() -> {
-            try {
-                String dummyGoogleToken = "google_id_token_" + System.currentTimeMillis();
-                JSONObject body = new JSONObject();
-                body.put("idToken", dummyGoogleToken);
+        GoogleAuthHelper.startSignIn(this);
+    }
 
-                JSONObject res = Api.request(this, "POST", "/api/auth/google", body);
-                JSONObject userObj = res.getJSONObject("user");
-                String token = res.getString("token");
-
-                Api.saveSession(this, token, userObj.optString("role", "customer"), userObj.optString("name", "Google User"));
-
-                runOnUiThread(() -> {
-                    toast("Welcome, " + userObj.optString("name") + "!");
-                    startActivity(new Intent(this, DashboardActivity.class));
-                    finish();
-                });
-            } catch (Exception ex) {
-                runOnUiThread(() -> toast("Google Sign-In Error: " + ex.getMessage()));
-            }
-        }).start();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (GoogleAuthHelper.handleActivityResult(this, requestCode, resultCode, data, null)) {
+            return;
+        }
     }
 
     private void toast(String s) {

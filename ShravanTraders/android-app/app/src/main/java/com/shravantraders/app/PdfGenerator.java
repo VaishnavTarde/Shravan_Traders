@@ -25,11 +25,60 @@ public class PdfGenerator {
 
     public static File generateInvoicePdf(Context context, JSONObject sale, String customerName) throws Exception {
         PdfDocument document = new PdfDocument();
-        // A4 size in points: 595 x 842
         PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
         PdfDocument.Page page = document.startPage(pageInfo);
         Canvas canvas = page.getCanvas();
 
+        renderInvoiceOnCanvas(context, canvas, sale, customerName, 1, 1);
+
+        document.finishPage(page);
+
+        String invoiceNo = sale.optString("invoiceNo", "ST-" + System.currentTimeMillis());
+        File dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Invoices");
+        if (!dir.exists()) dir.mkdirs();
+
+        File file = new File(dir, "Invoice_" + invoiceNo + ".pdf");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            document.writeTo(out);
+        } finally {
+            document.close();
+        }
+
+        return file;
+    }
+
+    public static File generateCombinedBillsPdf(Context context, JSONArray sales, String customerName) throws Exception {
+        if (sales == null || sales.length() == 0) {
+            throw new Exception("No sales found to generate combined bills PDF.");
+        }
+        PdfDocument document = new PdfDocument();
+        int total = sales.length();
+        for (int i = 0; i < total; i++) {
+            JSONObject s = sales.getJSONObject(i);
+            PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, i + 1).create();
+            PdfDocument.Page page = document.startPage(pageInfo);
+            Canvas canvas = page.getCanvas();
+
+            renderInvoiceOnCanvas(context, canvas, s, customerName, i + 1, total);
+
+            document.finishPage(page);
+        }
+
+        File dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Bills");
+        if (!dir.exists()) dir.mkdirs();
+
+        String safeCust = (customerName != null && !customerName.isEmpty() ? customerName.replaceAll("[^a-zA-Z0-9_-]", "_") : "All_Customers");
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        File file = new File(dir, "All_Bills_" + safeCust + "_" + timeStamp + ".pdf");
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            document.writeTo(out);
+        } finally {
+            document.close();
+        }
+        return file;
+    }
+
+    private static void renderInvoiceOnCanvas(Context context, Canvas canvas, JSONObject sale, String customerName, int pageNum, int totalPages) {
         Paint headerPaint = new Paint();
         headerPaint.setColor(Color.rgb(232, 93, 4)); // Orange accent
         headerPaint.setTextSize(22);
@@ -89,16 +138,21 @@ public class PdfGenerator {
             dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         }
 
+        JSONObject custObj = sale.optJSONObject("customerId");
+        String resolvedCustName = (customerName != null && !customerName.isEmpty())
+                ? customerName
+                : (custObj != null ? custObj.optString("name", "Walk-in Customer") : "Walk-in Customer");
+
         canvas.drawText("TAX INVOICE / BILL", 40, y, boldPaint);
         canvas.drawText("Invoice No: " + invoiceNo, 360, y, boldPaint);
         y += 18;
-        canvas.drawText("Customer: " + (customerName != null && !customerName.isEmpty() ? customerName : "Walk-in Customer"), 40, y, textPaint);
+        canvas.drawText("Customer: " + resolvedCustName, 40, y, textPaint);
         canvas.drawText("Date: " + dateStr, 360, y, textPaint);
         y += 18;
-        
+
         String paymentMethod = sale.optString("paymentMethod", "Cash");
         if (paymentMethod.equalsIgnoreCase("upi")) paymentMethod = "Online / UPI";
-        
+
         canvas.drawText("Payment Method: " + paymentMethod.toUpperCase(Locale.US), 40, y, boldPaint);
         y += 25;
 
@@ -124,38 +178,39 @@ public class PdfGenerator {
         JSONArray items = sale.optJSONArray("items");
         if (items != null) {
             for (int i = 0; i < items.length(); i++) {
-                JSONObject item = items.getJSONObject(i);
-                
-                String nameMr = item.optString("nameMr", "");
-                String nameEn = item.optString("nameEn", "");
-                String name = "";
-                if (!nameMr.isEmpty() && !nameEn.isEmpty()) {
-                    name = nameMr + " (" + nameEn + ")";
-                } else if (!nameMr.isEmpty()) {
-                    name = nameMr;
-                } else {
-                    name = nameEn.isEmpty() ? "Product" : nameEn;
-                }
-                
-                String unit = item.optString("unit", "bag");
-                double qty = item.optDouble("quantity", 1);
-                double price = item.optDouble("unitPrice", 0);
-                double total = item.optDouble("lineTotal", qty * price);
+                try {
+                    JSONObject item = items.getJSONObject(i);
 
-                y += 20;
-                canvas.drawText(String.valueOf(i + 1), 45, y, textPaint);
-                
-                // Truncate long names safely to prevent column overlaps
-                if (name.length() > 28) name = name.substring(0, 26) + "...";
-                canvas.drawText(name, 75, y, textPaint);
-                
-                canvas.drawText(unit, 275, y, textPaint);
-                canvas.drawText(String.format(Locale.US, "%.2f", qty), 360, y, rightAlignPaint);
-                canvas.drawText(String.format(Locale.US, "%.2f", price), 450, y, rightAlignPaint);
-                canvas.drawText(String.format(Locale.US, "%.2f", total), 555, y, rightAlignPaint);
+                    String nameMr = item.optString("nameMr", "");
+                    String nameEn = item.optString("nameEn", "");
+                    String name = "";
+                    if (!nameMr.isEmpty() && !nameEn.isEmpty()) {
+                        name = nameMr + " (" + nameEn + ")";
+                    } else if (!nameMr.isEmpty()) {
+                        name = nameMr;
+                    } else {
+                        name = nameEn.isEmpty() ? "Product" : nameEn;
+                    }
 
-                y += 10;
-                canvas.drawLine(40, y, 555, y, linePaint);
+                    String unit = item.optString("unit", "bag");
+                    double qty = item.optDouble("quantity", 1);
+                    double price = item.optDouble("unitPrice", 0);
+                    double total = item.optDouble("lineTotal", qty * price);
+
+                    y += 20;
+                    canvas.drawText(String.valueOf(i + 1), 45, y, textPaint);
+
+                    if (name.length() > 28) name = name.substring(0, 26) + "...";
+                    canvas.drawText(name, 75, y, textPaint);
+
+                    canvas.drawText(unit, 275, y, textPaint);
+                    canvas.drawText(String.format(Locale.US, "%.2f", qty), 360, y, rightAlignPaint);
+                    canvas.drawText(String.format(Locale.US, "%.2f", price), 450, y, rightAlignPaint);
+                    canvas.drawText(String.format(Locale.US, "%.2f", total), 555, y, rightAlignPaint);
+
+                    y += 10;
+                    canvas.drawLine(40, y, 555, y, linePaint);
+                } catch (Exception ignored) {}
             }
         }
 
@@ -188,7 +243,7 @@ public class PdfGenerator {
             canvas.drawText("Previous Balance:", 380, y, textPaint);
             canvas.drawText(String.format(Locale.US, "₹%.2f", previousBalance), 555, y, rightAlignPaint);
             y += 18;
-            
+
             canvas.drawText("Total Payable:", 380, y, boldPaint);
             canvas.drawText(String.format(Locale.US, "₹%.2f", totalPayable), 555, y, rightAlignBold);
             y += 18;
@@ -217,7 +272,7 @@ public class PdfGenerator {
             canvas.drawText(String.format(Locale.US, "₹%.2f", paidAmount), 555, y, rightAlignBold);
             y += 18;
         } else {
-            canvas.drawText("Paid Amount (" + payMethod.toUpperCase() + "):", 380, y, textPaint);
+            canvas.drawText("Paid Amount (" + payMethod.toUpperCase(Locale.US) + "):", 380, y, textPaint);
             canvas.drawText(String.format(Locale.US, "₹%.2f", paidAmount), 555, y, rightAlignPaint);
             y += 18;
         }
@@ -245,19 +300,11 @@ public class PdfGenerator {
         canvas.drawText("Thank you for your business! / आमच्याशी व्यवसाय केल्याबद्दल धन्यवाद!", 40, y, subHeaderPaint);
         canvas.drawText("Authorized Signatory (Shravan Traders)", 340, y, boldPaint);
 
-        document.finishPage(page);
-
-        File dir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Invoices");
-        if (!dir.exists()) dir.mkdirs();
-
-        File file = new File(dir, "Invoice_" + invoiceNo + ".pdf");
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            document.writeTo(out);
-        } finally {
-            document.close();
+        if (totalPages > 1) {
+            Paint pageNumPaint = new Paint(subHeaderPaint);
+            pageNumPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText("Bill " + pageNum + " of " + totalPages + " • Shravan Traders (श्रवण ट्रेडर्स)", 297, 815, pageNumPaint);
         }
-
-        return file;
     }
 
     public static File generateReportPdf(Context context, JSONObject summaryData, String dateRangeTitle) throws Exception {

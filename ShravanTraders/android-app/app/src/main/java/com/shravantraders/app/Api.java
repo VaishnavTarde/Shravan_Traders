@@ -14,8 +14,8 @@ import java.nio.charset.StandardCharsets;
 
 public final class Api {
 
-    // Primary USB reverse port forwarding URL
-    private static final String PRIMARY_API_URL = "http://127.0.0.1:5000";
+    // Primary API URL configured via build.gradle BuildConfig
+    private static final String PRIMARY_API_URL = BuildConfig.API_BASE_URL;
     // Fallback Android Emulator host URL
     private static final String FALLBACK_API_URL = "http://10.0.2.2:5000";
 
@@ -33,6 +33,21 @@ public final class Api {
                 .edit()
                 .putString("custom_api_url", url)
                 .apply();
+    }
+
+    public static String resolveImageUrl(Context context, String rawUrl) {
+        if (rawUrl == null || rawUrl.trim().isEmpty()) return "";
+        String url = rawUrl.trim();
+        String baseUrl = getBaseUrl(context);
+        if (url.startsWith("http://127.0.0.1:5000") || url.startsWith("http://localhost:5000") || url.startsWith("http://10.0.2.2:5000")) {
+            int idx = url.indexOf("/uploads");
+            if (idx != -1) {
+                return baseUrl + url.substring(idx);
+            }
+        } else if (url.startsWith("/uploads")) {
+            return baseUrl + url;
+        }
+        return url;
     }
 
     public static String token(Context context) {

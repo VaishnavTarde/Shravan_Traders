@@ -10,7 +10,7 @@ const nodemailer = require('nodemailer');
 const { v2: cloudinary } = require('cloudinary');
 const { body, validationResult } = require('express-validator');
 const { OAuth2Client } = require('google-auth-library');
-const { User, Product, Customer, Sale, Purchase, Payment, Expense } = require('./models');
+const { User, Product, Customer, Sale, Purchase, Payment, Expense, Notice } = require('./models');
 const { auth, ownerOnly } = require('./security');
 
 const router = express.Router();
@@ -665,26 +665,45 @@ router.get('/customers/:id/statement', ownerOnly, async (req, res, next) => {
     const transactions = [];
     let totalBilled = 0, totalPaid = 0;
 
+    // Map payments attached to a specific sale
+    const salePaymentsMap = {};
+    payments.forEach(p => {
+      if (p.saleId) {
+        const sId = String(p.saleId);
+        salePaymentsMap[sId] = (salePaymentsMap[sId] || 0) + (p.amount || 0);
+      }
+    });
+
     sales.forEach(s => {
-      totalBilled += s.total;
-      totalPaid += s.paidAmount;
+      const sId = String(s._id);
+      totalBilled += (s.total || 0);
+      const subsequentPaid = salePaymentsMap[sId] || 0;
+      const initialPaid = Math.max(0, (s.paidAmount || 0) - subsequentPaid);
+      totalPaid += (s.paidAmount || 0);
+
       transactions.push({
         type: 'SALE',
-        saleId: String(s._id),
+        saleId: sId,
         date: s.createdAt,
         reference: s.invoiceNo,
         description: s.items.map(i => `${i.nameMr || i.nameEn} x ${i.quantity}`).join(', '),
         debit: s.total,
-        credit: s.paidAmount,
-        netDue: s.total - s.paidAmount
+        credit: initialPaid,
+        paidAtSale: initialPaid,
+        totalPaidOnBill: s.paidAmount,
+        billTotal: s.total,
+        netDue: Math.max(0, s.total - s.paidAmount)
       });
     });
 
     payments.forEach(p => {
-      totalPaid += p.amount;
+      if (!p.saleId) {
+        totalPaid += (p.amount || 0);
+      }
       transactions.push({
         type: 'PAYMENT',
         paymentId: String(p._id),
+        saleId: p.saleId ? String(p.saleId) : null,
         date: p.createdAt,
         reference: `PAY-${String(p._id).slice(-6).toUpperCase()}`,
         description: `Payment Received (${p.method}) ${p.note ? '- ' + p.note : ''}`,
@@ -715,6 +734,7 @@ router.get('/me/statement', async (req, res, next) => {
   try {
     const customerId = req.auth.sub;
     const user = await User.findById(customerId);
+    if (!user) return res.status(404).json({ message: 'Customer not found.' });
 
     const [sales, payments] = await Promise.all([
       Sale.find({ customerId }).sort({ createdAt: 1 }).lean(),
@@ -724,28 +744,50 @@ router.get('/me/statement', async (req, res, next) => {
     const transactions = [];
     let totalBilled = 0, totalPaid = 0;
 
+    const salePaymentsMap = {};
+    payments.forEach(p => {
+      if (p.saleId) {
+        const sId = String(p.saleId);
+        salePaymentsMap[sId] = (salePaymentsMap[sId] || 0) + (p.amount || 0);
+      }
+    });
+
     sales.forEach(s => {
-      totalBilled += s.total;
-      totalPaid += s.paidAmount;
+      const sId = String(s._id);
+      totalBilled += (s.total || 0);
+      const subsequentPaid = salePaymentsMap[sId] || 0;
+      const initialPaid = Math.max(0, (s.paidAmount || 0) - subsequentPaid);
+      totalPaid += (s.paidAmount || 0);
+
       transactions.push({
         type: 'SALE',
+        saleId: sId,
         date: s.createdAt,
         reference: s.invoiceNo,
         description: s.items.map(i => `${i.nameMr || i.nameEn} x ${i.quantity}`).join(', '),
         debit: s.total,
-        credit: s.paidAmount
+        credit: initialPaid,
+        paidAtSale: initialPaid,
+        totalPaidOnBill: s.paidAmount,
+        billTotal: s.total,
+        netDue: Math.max(0, s.total - s.paidAmount)
       });
     });
 
     payments.forEach(p => {
-      totalPaid += p.amount;
+      if (!p.saleId) {
+        totalPaid += (p.amount || 0);
+      }
       transactions.push({
         type: 'PAYMENT',
+        paymentId: String(p._id),
+        saleId: p.saleId ? String(p.saleId) : null,
         date: p.createdAt,
         reference: `PAY-${String(p._id).slice(-6).toUpperCase()}`,
         description: `Payment Received (${p.method}) ${p.note ? '- ' + p.note : ''}`,
         debit: 0,
-        credit: p.amount
+        credit: p.amount,
+        netDue: -p.amount
       });
     });
 
@@ -886,7 +928,9 @@ router.post('/sales', ownerOnly, async (req, res, next) => {
 router.get('/sales', ownerOnly, async (req, res, next) => {
   try {
     const filter = {};
-    if (req.query.customerId && mongoose.isValidObjectId(req.query.customerId)) {
+    if (req.query.customerId === 'walkin') {
+      filter.customerId = null;
+    } else if (req.query.customerId && mongoose.isValidObjectId(req.query.customerId)) {
       filter.customerId = req.query.customerId;
     }
 
@@ -2001,4 +2045,77 @@ router.post('/uploads', ownerOnly, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// NOTICE BOARD ROUTES
+// GET /api/notice - Get active notice (customers see only active notice, owner sees latest)
+router.get('/notice', async (req, res, next) => {
+  try {
+    const isOwner = req.auth?.role === 'owner';
+    const filter = isOwner ? {} : { active: true };
+    const notice = await Notice.findOne(filter).sort({ updatedAt: -1 }).populate('updatedBy', 'name').lean();
+    if (!notice || (!isOwner && !notice.active)) {
+      return res.json({ ok: true, notice: null });
+    }
+    res.json({
+      ok: true,
+      notice: {
+        id: String(notice._id),
+        title: notice.title || '',
+        message: notice.message || '',
+        active: !!notice.active,
+        updatedBy: notice.updatedBy?.name || '',
+        updatedAt: notice.updatedAt,
+        createdAt: notice.createdAt
+      }
+    });
+  } catch (e) { next(e); }
+});
+
+// PUT /api/notice - Only owner can update / set notice
+router.put('/notice', ownerOnly, async (req, res, next) => {
+  try {
+    const { title, message, active } = req.body || {};
+    const isActive = active !== undefined ? Boolean(active) : true;
+    if (isActive && (!message || !message.trim())) {
+      return res.status(400).json({ message: 'Notice message cannot be empty.' });
+    }
+
+    let notice = await Notice.findOne().sort({ updatedAt: -1 });
+    if (!notice) {
+      notice = new Notice({
+        title: (title || '').trim(),
+        message: (message || '').trim(),
+        active: isActive,
+        updatedBy: req.auth.sub
+      });
+    } else {
+      if (title !== undefined) notice.title = (title || '').trim();
+      if (message !== undefined) notice.message = (message || '').trim();
+      notice.active = isActive;
+      notice.updatedBy = req.auth.sub;
+    }
+    await notice.save();
+
+    res.json({
+      ok: true,
+      message: 'Notice updated successfully.',
+      notice: {
+        id: String(notice._id),
+        title: notice.title,
+        message: notice.message,
+        active: notice.active,
+        updatedAt: notice.updatedAt
+      }
+    });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/notice - Only owner can deactivate/delete notice
+router.delete('/notice', ownerOnly, async (req, res, next) => {
+  try {
+    await Notice.updateMany({}, { active: false });
+    res.json({ ok: true, message: 'Notice cleared successfully.' });
+  } catch (e) { next(e); }
+});
+
 module.exports = router;
+

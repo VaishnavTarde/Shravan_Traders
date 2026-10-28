@@ -435,6 +435,13 @@ public class DashboardActivity extends AppCompatActivity {
 
         mainContentContainer.removeAllViews();
 
+        // 📢 Notice Board Banner (Top of customer home page)
+        LinearLayout customerNoticeContainer = new LinearLayout(this);
+        customerNoticeContainer.setOrientation(LinearLayout.VERTICAL);
+        customerNoticeContainer.setVisibility(View.GONE);
+        mainContentContainer.addView(customerNoticeContainer);
+        fetchAndRenderNoticeBoard(customerNoticeContainer, false);
+
         TextView welcome = createTextView("नमस्कार, " + Api.userName(this) + " 👋", 22, true, Color.parseColor("#1E293B"));
         TextView subWelcome = createTextView("Welcome to Shravan Traders", 13, false, Color.parseColor("#64748B"));
         mainContentContainer.addView(welcome);
@@ -922,6 +929,12 @@ public class DashboardActivity extends AppCompatActivity {
 
         mainContentContainer.addView(createTextView(currentLang.equals("mr") ? "Owner Dashboard" : "Owner Dashboard", 22, true, Color.parseColor("#1E293B")));
         mainContentContainer.addView(createTextView("Welcome back, Vinayak Bhau!", 13, false, Color.parseColor("#64748B")));
+
+        // 📢 Notice Board Banner for Owner
+        LinearLayout ownerNoticeContainer = new LinearLayout(this);
+        ownerNoticeContainer.setOrientation(LinearLayout.VERTICAL);
+        mainContentContainer.addView(ownerNoticeContainer);
+        fetchAndRenderNoticeBoard(ownerNoticeContainer, true);
 
         // Upper Date Filter Dropdown
         String[] dashFiltersEn = {"Current Month", "Last Month", "Today / Daily", "All Time"};
@@ -3331,7 +3344,18 @@ public class DashboardActivity extends AppCompatActivity {
                             LinearLayout amtRow = new LinearLayout(this);
                             amtRow.setOrientation(LinearLayout.HORIZONTAL);
                             if (deb > 0) amtRow.addView(createTextView("Billed: ₹" + String.format(Locale.US, "%.0f", deb) + "  ", 12, true, Color.parseColor("#DC2626")));
-                            if (cre > 0) amtRow.addView(createTextView("Paid: ₹" + String.format(Locale.US, "%.0f", cre), 12, true, Color.parseColor("#16A34A")));
+                            if (type.equals("SALE")) {
+                                double billPaid = t.optDouble("totalPaidOnBill", cre);
+                                double billDue = t.optDouble("netDue", Math.max(0, deb - billPaid));
+                                amtRow.addView(createTextView("Paid: ₹" + String.format(Locale.US, "%.0f", billPaid), 12, true, Color.parseColor("#16A34A")));
+                                if (billDue > 0) {
+                                    amtRow.addView(createTextView(" (Due: ₹" + String.format(Locale.US, "%.0f", billDue) + ")", 12, true, Color.parseColor("#DC2626")));
+                                } else {
+                                    amtRow.addView(createTextView(" (Paid)", 12, true, Color.parseColor("#16A34A")));
+                                }
+                            } else {
+                                if (cre > 0) amtRow.addView(createTextView("Paid: ₹" + String.format(Locale.US, "%.0f", cre), 12, true, Color.parseColor("#16A34A")));
+                            }
                             row1.addView(amtRow);
                             
                             tCard.addView(row1);
@@ -3356,8 +3380,8 @@ public class DashboardActivity extends AppCompatActivity {
 
                             if (type.equals("SALE") && "owner".equalsIgnoreCase(userRole)) {
                                 String saleId = t.optString("saleId");
-                                double currentPaid = t.optDouble("credit", 0);
-                                double billTotal = t.optDouble("debit", 0);
+                                double currentPaid = t.optDouble("totalPaidOnBill", t.optDouble("credit", 0));
+                                double billTotal = t.optDouble("billTotal", t.optDouble("debit", 0));
                                 if (!saleId.isEmpty()) {
                                     LinearLayout saleBtnRow = new LinearLayout(this);
                                     saleBtnRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -5448,6 +5472,8 @@ public class DashboardActivity extends AppCompatActivity {
             optsCard.setBackgroundResource(R.drawable.bg_card);
 
             optsCard.addView(buildOptionRow("⚙️", "Shop & Profile Settings", "Shop details, logo, contact, invoice settings", this::showShopSettingsDialog));
+            optsCard.addView(buildOptionRow("📢", currentLang.equals("mr") ? "दुकान सूचना फलक (Notice Board)" : "Shop Notice Board", currentLang.equals("mr") ? "सर्व ग्राहकांसाठी सूचना फलक तयार करा, संपादित करा किंवा हटवा (फक्त मालक)" : "Post, edit or clear announcement notice for customers (Owner only)", this::showNoticeBoardEditorDialog));
+            optsCard.addView(buildOptionRow("🧾", currentLang.equals("mr") ? "ग्राहक बिले डाउनलोड केंद्र" : "Customer Bills & Invoices Download Center", currentLang.equals("mr") ? "प्रत्येक ग्राहकाची खरेदी बिले (PDF) स्वतंत्रपणे व सर्व एकत्र डाउनलोड करा" : "Download individual purchase bills (PDF) of each customer, or all bills together", this::loadCustomerBillsDownloadCenter));
             optsCard.addView(buildOptionRow("🔑", "Change Password", "Change owner account password securely.", this::showChangePasswordDialog));
             optsCard.addView(buildOptionRow("💰", currentLang.equals("mr") ? "पैसे जमा व बाकी विश्लेषण (Collections)" : "Collections & Outstanding Analytics", currentLang.equals("mr") ? "नगद (Cash), ऑनलाइन (UPI) जमा व एकूण बाकी उधारी (दिवस/आठवडा/महिना/वर्ष फिल्टर)" : "Check cash collected (₹ X), online UPI (₹ Y), total received & remaining balance to collect with period filters", this::showCollectionsAnalyticsDialog));
             optsCard.addView(buildOptionRow("📊", currentLang.equals("mr") ? "साठा व विक्री तपासणी (Stock & Sell/Unsell)" : "Stock & Sold/Unsold Analytics", currentLang.equals("mr") ? "उत्पादनांनुसार विक्री, शिल्लक साठा व कालावधी फिल्टर" : "Check product-wise current stock, sold & unsold quantity with month/period filters", this::showStockAnalyticsDialog));
@@ -5530,6 +5556,642 @@ public class DashboardActivity extends AppCompatActivity {
             })
             .setNegativeButton("Cancel", null)
             .show();
+    }
+
+    // ==========================================
+    // NOTICE BOARD (OWNER EDIT, CUSTOMER READ-ONLY)
+    // ==========================================
+
+    private void fetchAndRenderNoticeBoard(LinearLayout container, boolean isOwner) {
+        new Thread(() -> {
+            try {
+                JSONObject res = Api.request(this, "GET", "/api/notice", null);
+                JSONObject notice = res != null ? res.optJSONObject("notice") : null;
+                runOnUiThread(() -> {
+                    if (isDestroyed() || isFinishing()) return;
+                    renderNoticeBoardUi(container, notice, isOwner);
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (!isOwner) {
+                        container.setVisibility(View.GONE);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void renderNoticeBoardUi(LinearLayout container, JSONObject notice, boolean isOwner) {
+        container.removeAllViews();
+        boolean isDark = LocaleHelper.isDarkMode(this);
+
+        boolean isActive = notice != null && notice.optBoolean("active", false);
+        String message = notice != null ? notice.optString("message", "").trim() : "";
+        String title = notice != null ? notice.optString("title", "").trim() : "";
+        String updatedAt = notice != null ? notice.optString("updatedAt", "") : "";
+        if (updatedAt.length() >= 10) updatedAt = updatedAt.substring(0, 10);
+
+        if (!isActive || message.isEmpty()) {
+            if (!isOwner) {
+                container.setVisibility(View.GONE);
+                return;
+            }
+            // If owner and no notice is active, show prompt card with "+ Post Notice"
+            container.setVisibility(View.VISIBLE);
+            LinearLayout promptCard = new LinearLayout(this);
+            promptCard.setOrientation(LinearLayout.VERTICAL);
+            promptCard.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+            GradientDrawable pd = new GradientDrawable();
+            pd.setColor(isDark ? Color.parseColor("#1E293B") : Color.parseColor("#F8FAFC"));
+            pd.setCornerRadius(dp(12));
+            pd.setStroke(dp(1), isDark ? Color.parseColor("#334155") : Color.parseColor("#CBD5E1"));
+            promptCard.setBackground(pd);
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.topMargin = dp(8);
+            lp.bottomMargin = dp(10);
+            promptCard.setLayoutParams(lp);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+
+            TextView tv = createTextView("📢 " + (currentLang.equals("mr") ? "दुकान सूचना फलक (सध्या कोणतीही सूचना सक्रिय नाही)" : "Notice Board (No active notice)"), 13, true, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
+            row.addView(tv, new LinearLayout.LayoutParams(0, -2, 1.0f));
+
+            Button btnAdd = createStyledButton(currentLang.equals("mr") ? "+ सूचना लिहा" : "+ Post Notice", Color.parseColor("#E85D04"), this::showNoticeBoardEditorDialog);
+            btnAdd.setTextSize(12);
+            row.addView(btnAdd, new LinearLayout.LayoutParams(-2, dp(34)));
+
+            promptCard.addView(row);
+            container.addView(promptCard);
+            return;
+        }
+
+        // Active Notice Card
+        container.setVisibility(View.VISIBLE);
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+
+        GradientDrawable gd = new GradientDrawable();
+        if (isDark) {
+            gd.setColor(Color.parseColor("#2A1B0E"));
+            gd.setStroke(dp(2), Color.parseColor("#B45309"));
+        } else {
+            gd.setColor(Color.parseColor("#FFFBEB"));
+            gd.setStroke(dp(2), Color.parseColor("#F59E0B"));
+        }
+        gd.setCornerRadius(dp(14));
+        card.setBackground(gd);
+
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
+        clp.topMargin = dp(6);
+        clp.bottomMargin = dp(14);
+        card.setLayoutParams(clp);
+
+        // Header Row: [📢 दुकान सूचना फलक] ... [Date / Edit Button]
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setPadding(0, 0, 0, dp(8));
+
+        // Badge Container
+        LinearLayout badge = new LinearLayout(this);
+        badge.setOrientation(LinearLayout.HORIZONTAL);
+        badge.setGravity(Gravity.CENTER_VERTICAL);
+        badge.setPadding(dp(8), dp(4), dp(8), dp(4));
+        GradientDrawable bgBadge = new GradientDrawable();
+        bgBadge.setColor(Color.parseColor("#EA580C"));
+        bgBadge.setCornerRadius(dp(6));
+        badge.setBackground(bgBadge);
+
+        TextView badgeTv = createTextView(currentLang.equals("mr") ? "📢 दुकान सूचना फलक" : "📢 SHOP NOTICE BOARD", 11, true, Color.WHITE);
+        badge.addView(badgeTv);
+        headerRow.addView(badge, new LinearLayout.LayoutParams(-2, -2));
+
+        View space = new View(this);
+        headerRow.addView(space, new LinearLayout.LayoutParams(0, 1, 1.0f));
+
+        if (!updatedAt.isEmpty()) {
+            TextView dateTv = createTextView(updatedAt, 11, false, isDark ? Color.parseColor("#D97706") : Color.parseColor("#B45309"));
+            dateTv.setPadding(0, 0, dp(8), 0);
+            headerRow.addView(dateTv);
+        }
+
+        // Only owner can edit it!
+        if (isOwner) {
+            Button btnEdit = createStyledButton("✏️ " + (currentLang.equals("mr") ? "बदला" : "Edit"), Color.parseColor("#C2410C"), this::showNoticeBoardEditorDialog);
+            btnEdit.setTextSize(11);
+            headerRow.addView(btnEdit, new LinearLayout.LayoutParams(-2, dp(32)));
+        }
+
+        card.addView(headerRow);
+
+        // Title if available
+        if (!title.isEmpty()) {
+            TextView titleTv = createTextView(title, 16, true, isDark ? Color.parseColor("#FDE68A") : Color.parseColor("#92400E"));
+            titleTv.setPadding(0, dp(2), 0, dp(6));
+            card.addView(titleTv);
+        }
+
+        // Message text
+        TextView msgTv = createTextView(message, 14, false, isDark ? Color.parseColor("#FEF3C7") : Color.parseColor("#78350F"));
+        msgTv.setLineSpacing(dp(2), 1.15f);
+        msgTv.setTextIsSelectable(true);
+        card.addView(msgTv);
+
+        container.addView(card);
+    }
+
+    private void showNoticeBoardEditorDialog() {
+        if (!"owner".equalsIgnoreCase(userRole)) {
+            Toast.makeText(this, "Only owner can edit the notice board.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                JSONObject res = Api.request(this, "GET", "/api/notice", null);
+                JSONObject notice = res != null ? res.optJSONObject("notice") : null;
+                String currTitle = notice != null ? notice.optString("title", "") : "";
+                String currMessage = notice != null ? notice.optString("message", "") : "";
+                boolean currActive = notice != null && notice.optBoolean("active", true);
+
+                runOnUiThread(() -> {
+                    if (isDestroyed() || isFinishing()) return;
+
+                    boolean isDark = LocaleHelper.isDarkMode(this);
+                    ScrollView scroll = new ScrollView(this);
+                    LinearLayout box = new LinearLayout(this);
+                    box.setOrientation(LinearLayout.VERTICAL);
+                    box.setPadding(dp(20), dp(16), dp(20), dp(16));
+                    scroll.addView(box);
+
+                    TextView subTitle = createTextView(
+                        currentLang.equals("mr") 
+                            ? "ही सूचना सर्व ग्राहकांच्या मुख्य पृष्ठावर (Home Page) सर्वात वर दिसेल. (फक्त मालक बदलू शकतात)" 
+                            : "This announcement notice will appear at the top of customer home page. (Only owner can edit)",
+                        13, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")
+                    );
+                    subTitle.setPadding(0, 0, 0, dp(14));
+                    box.addView(subTitle);
+
+                    box.addView(createTextView(currentLang.equals("mr") ? "सूचना शीर्षक (ऐच्छिक / Title):" : "Notice Title (Optional):", 13, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+                    EditText titleInput = createFormInput(currentLang.equals("mr") ? "उदा. दिवाळी सुट्टी / नवीन स्टॉक / दर बदल" : "e.g. Festival Holiday / New Stock Available", currTitle, InputType.TYPE_CLASS_TEXT);
+                    box.addView(titleInput);
+
+                    box.addView(createTextView(currentLang.equals("mr") ? "सूचना संदेश (Message): *" : "Notice Message: *", 13, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+                    EditText msgInput = new EditText(this);
+                    msgInput.setHint(currentLang.equals("mr") ? "ग्राहकांसाठी सूचना येथे सविस्तर लिहा..." : "Write notice message for customers here...");
+                    msgInput.setText(currMessage);
+                    msgInput.setTextSize(14);
+                    msgInput.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
+                    msgInput.setHintTextColor(isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B"));
+                    msgInput.setBackgroundResource(R.drawable.bg_card);
+                    msgInput.setPadding(dp(14), dp(12), dp(14), dp(12));
+                    msgInput.setMinLines(4);
+                    msgInput.setMaxLines(8);
+                    msgInput.setGravity(Gravity.TOP | Gravity.START);
+                    msgInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+                    LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(-1, -2);
+                    mlp.bottomMargin = dp(14);
+                    box.addView(msgInput, mlp);
+
+                    CheckBox activeCheck = new CheckBox(this);
+                    activeCheck.setText(currentLang.equals("mr") ? "सूचना सक्रिय ठेवा (Show to customers)" : "Active (Visible to customers)");
+                    activeCheck.setChecked(currActive);
+                    activeCheck.setTextColor(isDark ? Color.WHITE : Color.parseColor("#1E293B"));
+                    activeCheck.setPadding(dp(6), 0, 0, 0);
+                    LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, -2);
+                    clp.bottomMargin = dp(16);
+                    box.addView(activeCheck, clp);
+
+                    AlertDialog dlg = new AlertDialog.Builder(this)
+                        .setTitle(currentLang.equals("mr") ? "📢 दुकान सूचना फलक संपादक" : "📢 Shop Notice Board Editor")
+                        .setView(scroll)
+                        .setPositiveButton(currentLang.equals("mr") ? "सेव्ह करा" : "Save Notice", null)
+                        .setNeutralButton(currentLang.equals("mr") ? "सूचना हटवा" : "Clear Notice", null)
+                        .setNegativeButton(currentLang.equals("mr") ? "रद्द करा" : "Cancel", null)
+                        .create();
+
+                    dlg.setOnShowListener(d -> {
+                        Button btnSave = dlg.getButton(AlertDialog.BUTTON_POSITIVE);
+                        btnSave.setTextColor(Color.parseColor("#E85D04"));
+                        btnSave.setOnClickListener(v -> {
+                            String titleStr = titleInput.getText().toString().trim();
+                            String msgStr = msgInput.getText().toString().trim();
+                            boolean isActive = activeCheck.isChecked();
+
+                            if (isActive && msgStr.isEmpty()) {
+                                Toast.makeText(this, currentLang.equals("mr") ? "कृपया सूचना संदेश प्रविष्ट करा." : "Please enter notice message.", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+
+                            btnSave.setEnabled(false);
+                            new Thread(() -> {
+                                try {
+                                    JSONObject body = new JSONObject();
+                                    body.put("title", titleStr);
+                                    body.put("message", msgStr);
+                                    body.put("active", isActive);
+
+                                    Api.request(this, "PUT", "/api/notice", body);
+                                    runOnUiThread(() -> {
+                                        Toast.makeText(this, currentLang.equals("mr") ? "सूचना यशस्वीरीत्या सेव्ह केली!" : "Notice saved successfully!", Toast.LENGTH_SHORT).show();
+                                        dlg.dismiss();
+                                        if ("dash".equals(activeTab)) {
+                                            loadOwnerDashboard();
+                                        } else if ("home".equals(activeTab)) {
+                                            loadCustomerHome();
+                                        }
+                                    });
+                                } catch (Exception e) {
+                                    runOnUiThread(() -> {
+                                        btnSave.setEnabled(true);
+                                        Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                    });
+                                }
+                            }).start();
+                        });
+
+                        Button btnClear = dlg.getButton(AlertDialog.BUTTON_NEUTRAL);
+                        btnClear.setTextColor(Color.parseColor("#DC2626"));
+                        btnClear.setOnClickListener(v -> {
+                            new AlertDialog.Builder(this)
+                                .setTitle(currentLang.equals("mr") ? "सूचना हटवा?" : "Clear Notice?")
+                                .setMessage(currentLang.equals("mr") ? "तुम्हाला खात्री आहे की ही सूचना काढायची आहे?" : "Are you sure you want to deactivate/clear this notice?")
+                                .setPositiveButton(currentLang.equals("mr") ? "होय, हटवा" : "Yes, Clear", (cd, cw) -> {
+                                    new Thread(() -> {
+                                        try {
+                                            Api.request(this, "DELETE", "/api/notice", null);
+                                            runOnUiThread(() -> {
+                                                Toast.makeText(this, currentLang.equals("mr") ? "सूचना हटवली." : "Notice cleared.", Toast.LENGTH_SHORT).show();
+                                                dlg.dismiss();
+                                                if ("dash".equals(activeTab)) {
+                                                    loadOwnerDashboard();
+                                                } else if ("home".equals(activeTab)) {
+                                                    loadCustomerHome();
+                                                }
+                                            });
+                                        } catch (Exception ex) {
+                                            runOnUiThread(() -> Toast.makeText(this, "Error: " + ex.getMessage(), Toast.LENGTH_SHORT).show());
+                                        }
+                                    }).start();
+                                })
+                                .setNegativeButton(currentLang.equals("mr") ? "रद्द" : "Cancel", null)
+                                .show();
+                        });
+                    });
+
+                    dlg.show();
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void loadCustomerBillsDownloadCenter() {
+        activeTab = "bills_download_center";
+        buildBottomNav();
+        boolean isDark = LocaleHelper.isDarkMode(this);
+        statusTextView.setText(currentLang.equals("mr") ? "ग्राहक बिले डाउनलोड केंद्र" : "Customer Bills Download Center");
+        mainContentContainer.removeAllViews();
+
+        // 1. Back Row with Header
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setPadding(0, 0, 0, dp(12));
+
+        TextView backBtn = createTextView("← " + (currentLang.equals("mr") ? "मागे" : "Back"), 14, true, Color.parseColor("#0284C7"));
+        backBtn.setPadding(dp(8), dp(6), dp(12), dp(6));
+        backBtn.setBackgroundResource(R.drawable.bg_card);
+        backBtn.setOnClickListener(v -> loadSettingsView());
+        headerRow.addView(backBtn);
+
+        LinearLayout titleCol = new LinearLayout(this);
+        titleCol.setOrientation(LinearLayout.VERTICAL);
+        titleCol.setPadding(dp(12), 0, 0, 0);
+        titleCol.addView(createTextView(currentLang.equals("mr") ? "ग्राहक बिले डाउनलोड केंद्र" : "Customer Bills Download Center", 18, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+        titleCol.addView(createTextView(currentLang.equals("mr") ? "प्रत्येक खरेदीचे बिल (PDF) स्वतंत्र किंवा सर्व बिले एकत्र डाउनलोड करा" : "Download individual purchase bills (PDF) separately or all together", 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+        headerRow.addView(titleCol, new LinearLayout.LayoutParams(0, -2, 1.0f));
+
+        mainContentContainer.addView(headerRow);
+
+        // 2. Global Quick Action Card: Download All Shop Recent Invoices
+        LinearLayout quickActionCard = new LinearLayout(this);
+        quickActionCard.setOrientation(LinearLayout.VERTICAL);
+        quickActionCard.setPadding(dp(14), dp(12), dp(14), dp(12));
+        quickActionCard.setBackgroundResource(R.drawable.bg_card);
+        LinearLayout.LayoutParams qalp = new LinearLayout.LayoutParams(-1, -2);
+        qalp.bottomMargin = dp(12);
+
+        quickActionCard.addView(createTextView("🏪 " + (currentLang.equals("mr") ? "सर्व दुकानाची चालू बिले" : "All Shop Invoices"), 15, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+        quickActionCard.addView(createTextView(currentLang.equals("mr") ? "सर्व ग्राहकांची नुकतीच तयार झालेली बिले एकाच एकत्र PDF मध्ये डाउनलोड करा." : "Download all recently generated shop sales bills together in a single combined PDF.", 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+
+        Button dlAllShopBtn = createStyledButton("📥 " + (currentLang.equals("mr") ? "सर्व दुकानाची बिले एकत्र PDF डाउनलोड करा" : "Download All Recent Shop Bills (Combined PDF)"), Color.parseColor("#16A34A"), () -> {
+            Toast.makeText(this, currentLang.equals("mr") ? "सर्व बिले तयार करत आहे..." : "Generating combined bills PDF...", Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                try {
+                    JSONObject sRes = Api.request(this, "GET", "/api/sales", null);
+                    JSONArray allSales = sRes != null ? sRes.optJSONArray("sales") : null;
+                    if (allSales == null || allSales.length() == 0) {
+                        runOnUiThread(() -> Toast.makeText(this, "No bills found.", Toast.LENGTH_SHORT).show());
+                        return;
+                    }
+                    File pdf = PdfGenerator.generateCombinedBillsPdf(this, allSales, "Shravan_Traders_All_Bills");
+                    runOnUiThread(() -> promptSharePdf(pdf, "Shravan Traders - All Recent Invoices PDF"));
+                } catch (Exception ex) {
+                    runOnUiThread(() -> Toast.makeText(this, "PDF Error: " + ex.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            }).start();
+        });
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(-1, dp(42));
+        dlp.topMargin = dp(8);
+        quickActionCard.addView(dlAllShopBtn, dlp);
+        mainContentContainer.addView(quickActionCard, qalp);
+
+        // 3. Search Bar
+        EditText searchBar = createFormInput(currentLang.equals("mr") ? "ग्राहक शोधा (नाव किंवा मोबाईल नंबर)..." : "Search Customer (Name or Mobile)...", "", InputType.TYPE_CLASS_TEXT);
+        searchBar.setBackgroundResource(R.drawable.bg_card);
+        searchBar.setPadding(dp(14), dp(10), dp(14), dp(10));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(46));
+        slp.bottomMargin = dp(12);
+        mainContentContainer.addView(searchBar, slp);
+
+        // 4. Customer List Container
+        LinearLayout listContainer = new LinearLayout(this);
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        mainContentContainer.addView(listContainer, new LinearLayout.LayoutParams(-1, -2));
+
+        listContainer.addView(createTextView(currentLang.equals("mr") ? "ग्राहक माहिती लोड करत आहे..." : "Loading customers...", 14, false, Color.parseColor("#64748B")));
+
+        new Thread(() -> {
+            try {
+                JSONObject r = Api.request(this, "GET", "/api/customers/ledger", null);
+                JSONArray ledger = r != null ? r.optJSONArray("ledger") : new JSONArray();
+                if (ledger == null) ledger = new JSONArray();
+
+                final JSONArray finalLedger = ledger;
+                runOnUiThread(() -> {
+                    renderDownloadCenterCustomers(finalLedger, searchBar.getText().toString().trim(), listContainer);
+
+                    searchBar.addTextChangedListener(new TextWatcher() {
+                        @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                        @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                            renderDownloadCenterCustomers(finalLedger, s.toString().trim(), listContainer);
+                        }
+                        @Override public void afterTextChanged(Editable s) {}
+                    });
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    listContainer.removeAllViews();
+                    listContainer.addView(createTextView("Error loading customers: " + ex.getMessage(), 14, false, Color.parseColor("#DC2626")));
+                });
+            }
+        }).start();
+    }
+
+    private void renderDownloadCenterCustomers(JSONArray ledger, String query, LinearLayout listContainer) {
+        listContainer.removeAllViews();
+        boolean isDark = LocaleHelper.isDarkMode(this);
+        int count = 0;
+
+        for (int i = 0; i < ledger.length(); i++) {
+            JSONObject c = ledger.optJSONObject(i);
+            if (c == null) continue;
+            String name = c.optString("name", "Unknown");
+            String mobile = c.optString("mobile", "");
+            String cId = c.optString("id");
+
+            if (!query.isEmpty()) {
+                String q = query.toLowerCase(Locale.US);
+                if (!name.toLowerCase(Locale.US).contains(q) && !mobile.contains(q)) {
+                    continue;
+                }
+            }
+
+            count++;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(14), dp(12), dp(14), dp(12));
+            card.setBackgroundResource(R.drawable.bg_card);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+            cp.bottomMargin = dp(10);
+
+            // Title & Mobile
+            LinearLayout titleRow = new LinearLayout(this);
+            titleRow.setOrientation(LinearLayout.HORIZONTAL);
+            titleRow.addView(createTextView("👤 " + name, 15, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")), new LinearLayout.LayoutParams(0, -2, 1.0f));
+            if (!mobile.isEmpty() && !"N/A".equalsIgnoreCase(mobile)) {
+                titleRow.addView(createTextView("📞 " + mobile, 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+            }
+            card.addView(titleRow);
+
+            int pCount = c.optInt("purchasesCount", 0);
+            double billed = c.optDouble("totalBilled", 0);
+            double paid = c.optDouble("totalPaid", 0);
+            double due = c.optDouble("creditBalance", 0);
+
+            // Summary Info
+            String stats = "📦 " + pCount + " " + (currentLang.equals("mr") ? "खरेदी बिले" : "Bills") +
+                           "  |  ₹" + String.format(Locale.US, "%.0f", billed) + " " + (currentLang.equals("mr") ? "बिल" : "Billed") +
+                           "  |  ₹" + String.format(Locale.US, "%.0f", paid) + " " + (currentLang.equals("mr") ? "जमा" : "Paid");
+            card.addView(createTextView(stats, 12, false, isDark ? Color.parseColor("#CBD5E1") : Color.parseColor("#475569")));
+
+            TextView dueTv = createTextView((currentLang.equals("mr") ? "शिल्लक बाकी: ₹" : "Remaining Due: ₹") + String.format(Locale.US, "%.0f", due), 13, true, due > 0 ? Color.parseColor("#DC2626") : Color.parseColor("#16A34A"));
+            card.addView(dueTv);
+
+            // Action Buttons
+            LinearLayout btnRow = new LinearLayout(this);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams brp = new LinearLayout.LayoutParams(-1, dp(38));
+            brp.topMargin = dp(8);
+
+            Button viewBillsBtn = createStyledButton("📂 " + (currentLang.equals("mr") ? "खरेदी बिले पहा" : "View Bills (Separate)"), Color.parseColor("#0284C7"), () -> {
+                showCustomerInvoicesSheet(cId, name, mobile);
+            });
+
+            Button dlAllCustBillsBtn = createStyledButton("📥 " + (currentLang.equals("mr") ? "सर्व एकत्र PDF" : "All Bills Together"), Color.parseColor("#16A34A"), () -> {
+                downloadCustomerBillsTogether(cId, name);
+            });
+
+            btnRow.addView(viewBillsBtn, new LinearLayout.LayoutParams(0, -1, 1.3f));
+            View sp = new View(this); btnRow.addView(sp, new LinearLayout.LayoutParams(dp(8), 1));
+            btnRow.addView(dlAllCustBillsBtn, new LinearLayout.LayoutParams(0, -1, 1.0f));
+
+            card.addView(btnRow, brp);
+            listContainer.addView(card, cp);
+        }
+
+        if (count == 0) {
+            listContainer.addView(createTextView(currentLang.equals("mr") ? "कोणतेही ग्राहक सापडले नाहीत." : "No customers found.", 14, false, Color.parseColor("#64748B")));
+        }
+    }
+
+    private void downloadCustomerBillsTogether(String customerId, String customerName) {
+        Toast.makeText(this, currentLang.equals("mr") ? "सर्व बिले तयार करत आहे..." : "Generating combined bills...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                String url = "/api/sales";
+                if (customerId != null && !customerId.isEmpty()) {
+                    url += "?customerId=" + customerId;
+                }
+                JSONObject res = Api.request(this, "GET", url, null);
+                JSONArray sales = res != null ? res.optJSONArray("sales") : null;
+                if (sales == null || sales.length() == 0) {
+                    runOnUiThread(() -> Toast.makeText(this, "No bills found for this customer.", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                File pdf = PdfGenerator.generateCombinedBillsPdf(this, sales, customerName);
+                runOnUiThread(() -> promptSharePdf(pdf, customerName + " - All Bills Combined PDF"));
+            } catch (Exception ex) {
+                runOnUiThread(() -> Toast.makeText(this, "Error generating combined PDF: " + ex.getMessage(), Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void showCustomerInvoicesSheet(String customerId, String customerName, String customerMobile) {
+        boolean isDark = LocaleHelper.isDarkMode(this);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(16), dp(18), dp(16));
+        box.setBackgroundColor(isDark ? Color.parseColor("#0F172A") : Color.parseColor("#FFF9F2"));
+
+        box.addView(createTextView("👤 " + customerName + (customerMobile.isEmpty() || "N/A".equals(customerMobile) ? "" : " (" + customerMobile + ")"), 16, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+        box.addView(createTextView(currentLang.equals("mr") ? "खरेदी बिले लोड करत आहे..." : "Loading purchase bills...", 13, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+
+        AlertDialog d = new AlertDialog.Builder(this)
+            .setTitle(currentLang.equals("mr") ? "खरेदी बिले (Individual Bills)" : "Purchase Bills (Individual & All)")
+            .setView(box)
+            .setPositiveButton(currentLang.equals("mr") ? "बंद करा" : "Close", null)
+            .show();
+
+        new Thread(() -> {
+            try {
+                String url = "/api/sales";
+                if (customerId != null && !customerId.isEmpty()) {
+                    url += "?customerId=" + customerId;
+                }
+                JSONObject res = Api.request(this, "GET", url, null);
+                JSONArray sales = res != null ? res.optJSONArray("sales") : null;
+                if (sales == null) sales = new JSONArray();
+
+                final JSONArray finalSales = sales;
+                runOnUiThread(() -> {
+                    box.removeAllViews();
+
+                    // Header
+                    box.addView(createTextView("👤 " + customerName, 17, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")));
+                    if (!customerMobile.isEmpty() && !"N/A".equals(customerMobile)) {
+                        box.addView(createTextView("📞 " + customerMobile, 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+                    }
+                    box.addView(createTextView("Total Purchases: " + finalSales.length() + " Bills", 13, true, Color.parseColor("#0284C7")));
+
+                    // Top Quick Action: Download All Together
+                    Button dlTogetherBtn = createStyledButton("📥 " + (currentLang.equals("mr") ? "सर्व बिले एकत्र डाउनलोड करा (PDF)" : "Download All Bills Together (Combined PDF)"), Color.parseColor("#16A34A"), () -> {
+                        downloadCustomerBillsTogether(customerId, customerName);
+                    });
+                    LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, dp(40));
+                    tlp.topMargin = dp(8);
+                    tlp.bottomMargin = dp(10);
+                    box.addView(dlTogetherBtn, tlp);
+
+                    View div = new View(this);
+                    div.setBackgroundColor(isDark ? Color.parseColor("#334155") : Color.parseColor("#E2E8F0"));
+                    box.addView(div, new LinearLayout.LayoutParams(-1, dp(1)));
+
+                    ScrollView scroll = new ScrollView(this);
+                    LinearLayout list = new LinearLayout(this);
+                    list.setOrientation(LinearLayout.VERTICAL);
+                    list.setPadding(0, dp(8), 0, 0);
+                    scroll.addView(list);
+                    box.addView(scroll, new LinearLayout.LayoutParams(-1, dp(380)));
+
+                    if (finalSales.length() == 0) {
+                        list.addView(createTextView(currentLang.equals("mr") ? "या ग्राहकासाठी कोणतीही बिले आढळली नाहीत." : "No purchase bills recorded for this customer.", 14, false, Color.parseColor("#64748B")));
+                        return;
+                    }
+
+                    for (int i = 0; i < finalSales.length(); i++) {
+                        JSONObject s = finalSales.optJSONObject(i);
+                        if (s == null) continue;
+
+                        String inv = s.optString("invoiceNo", "ST-0000");
+                        String dt = s.optString("createdAt", "");
+                        if (dt.length() >= 10) dt = dt.substring(0, 10);
+                        double total = s.optDouble("total", 0);
+                        double paid = s.optDouble("paidAmount", 0);
+                        double due = Math.max(0, total - paid);
+
+                        // Items summary
+                        StringBuilder itemsStr = new StringBuilder();
+                        JSONArray items = s.optJSONArray("items");
+                        if (items != null) {
+                            for (int k = 0; k < items.length(); k++) {
+                                JSONObject it = items.optJSONObject(k);
+                                if (it != null) {
+                                    if (itemsStr.length() > 0) itemsStr.append(", ");
+                                    itemsStr.append(it.optString("nameMr", it.optString("nameEn", "Item")))
+                                            .append(" x ").append((int)it.optDouble("quantity", 1));
+                                }
+                            }
+                        }
+
+                        LinearLayout sCard = new LinearLayout(this);
+                        sCard.setOrientation(LinearLayout.VERTICAL);
+                        sCard.setPadding(dp(12), dp(10), dp(12), dp(10));
+                        sCard.setBackgroundResource(R.drawable.bg_card);
+                        LinearLayout.LayoutParams scp = new LinearLayout.LayoutParams(-1, -2);
+                        scp.bottomMargin = dp(8);
+
+                        // Row 1: Invoice & Date
+                        LinearLayout r1 = new LinearLayout(this);
+                        r1.setOrientation(LinearLayout.HORIZONTAL);
+                        r1.addView(createTextView("🧾 #" + inv, 14, true, isDark ? Color.WHITE : Color.parseColor("#1E293B")), new LinearLayout.LayoutParams(0, -2, 1.0f));
+                        r1.addView(createTextView("📅 " + dt, 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+                        sCard.addView(r1);
+
+                        // Row 2: Items
+                        if (itemsStr.length() > 0) {
+                            sCard.addView(createTextView(itemsStr.toString(), 12, false, isDark ? Color.parseColor("#94A3B8") : Color.parseColor("#64748B")));
+                        }
+
+                        // Row 3: Amounts & Status
+                        String amtText = "Billed: ₹" + String.format(Locale.US, "%.0f", total) +
+                                         "  |  Paid: ₹" + String.format(Locale.US, "%.0f", paid);
+                        if (due > 0) amtText += "  |  Due: ₹" + String.format(Locale.US, "%.0f", due);
+                        else amtText += "  |  (Fully Paid)";
+                        sCard.addView(createTextView(amtText, 12, true, due > 0 ? Color.parseColor("#DC2626") : Color.parseColor("#16A34A")));
+
+                        // Row 4: Download Individual Bill Button
+                        Button dlBillBtn = createStyledButton("📄 " + (currentLang.equals("mr") ? "या खरेदीचे बिल PDF डाउनलोड करा" : "Download This Purchase Bill (PDF)"), Color.parseColor("#0284C7"), () -> {
+                            try {
+                                File pdf = PdfGenerator.generateInvoicePdf(this, s, customerName);
+                                promptSharePdf(pdf, "Invoice #" + inv + " for " + customerName);
+                            } catch (Exception ex) {
+                                Toast.makeText(this, "Error generating bill PDF: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(36));
+                        bp.topMargin = dp(6);
+                        sCard.addView(dlBillBtn, bp);
+
+                        list.addView(sCard, scp);
+                    }
+                });
+            } catch (Exception ex) {
+                runOnUiThread(() -> {
+                    box.removeAllViews();
+                    box.addView(createTextView("Error loading bills: " + ex.getMessage(), 14, false, Color.parseColor("#DC2626")));
+                });
+            }
+        }).start();
     }
 
     private void showChangePasswordDialog() {

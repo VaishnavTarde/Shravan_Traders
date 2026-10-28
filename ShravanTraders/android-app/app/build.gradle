@@ -10,7 +10,7 @@ android {
         versionCode 1
         versionName '1.0'
         // Emulator URL. Change to your deployed HTTPS backend URL for production.
-        buildConfigField 'String', 'API_BASE_URL', '"http://10.0.2.2:5000"'
+        buildConfigField 'String', 'API_BASE_URL', '"https://shravan-traders-backend.onrender.com"'
     }
     buildFeatures { buildConfig true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }

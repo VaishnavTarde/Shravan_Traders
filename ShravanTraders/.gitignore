@@ -1,0 +1,30 @@
+# Android build outputs & caches
+*.apk
+*.ap_
+*.aab
+build/
+**/build/
+.gradle/
+**/local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Node & backend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.*.local
+uploads/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+*~

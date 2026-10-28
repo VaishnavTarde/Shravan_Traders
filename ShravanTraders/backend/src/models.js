@@ -127,6 +127,13 @@ const expenseSchema = new Schema({
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, { timestamps: true });
 
+const noticeSchema = new Schema({
+  title: { type: String, trim: true, default: '' },
+  message: { type: String, required: true, trim: true },
+  active: { type: Boolean, default: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+
 module.exports = {
   User: mongoose.model('User', userSchema),
   Product: mongoose.model('Product', productSchema),
@@ -134,5 +141,7 @@ module.exports = {
   Sale: mongoose.model('Sale', saleSchema),
   Purchase: mongoose.model('Purchase', purchaseSchema),
   Payment: mongoose.model('Payment', paymentSchema),
-  Expense: mongoose.model('Expense', expenseSchema)
+  Expense: mongoose.model('Expense', expenseSchema),
+  Notice: mongoose.model('Notice', noticeSchema)
 };
+

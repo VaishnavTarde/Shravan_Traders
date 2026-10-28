@@ -121,6 +121,26 @@ public class RegisterActivity extends AppCompatActivity {
         card.addView(registerButton, bp);
         registerButton.setOnClickListener(v -> doRegister());
 
+        // OR Divider
+        TextView orDivider = new TextView(this);
+        orDivider.setText(lang.equals("mr") ? "──────── किंवा ────────" : "──────── OR ────────");
+        orDivider.setTextColor(Color.parseColor("#94A3B8"));
+        orDivider.setTextSize(12);
+        orDivider.setGravity(Gravity.CENTER);
+        orDivider.setPadding(0, dp(10), 0, dp(10));
+        card.addView(orDivider);
+
+        // Continue with Google Button
+        Button googleButton = new Button(this);
+        googleButton.setText("G  " + (lang.equals("mr") ? "Google द्वारे नोंदणी करा" : "Continue with Google"));
+        googleButton.setAllCaps(false);
+        googleButton.setTextColor(Color.parseColor("#1E293B"));
+        googleButton.setTextSize(14);
+        googleButton.setTypeface(null, Typeface.BOLD);
+        googleButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F1F5F9")));
+        card.addView(googleButton, new LinearLayout.LayoutParams(-1, dp(46)));
+        googleButton.setOnClickListener(v -> GoogleAuthHelper.startSignIn(this));
+
         root.addView(card);
 
         // Login Link
@@ -220,6 +240,14 @@ public class RegisterActivity extends AppCompatActivity {
                 });
             }
         }).start();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (GoogleAuthHelper.handleActivityResult(this, requestCode, resultCode, data, null)) {
+            return;
+        }
     }
 
     private void toast(String s) {

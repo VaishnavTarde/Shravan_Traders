@@ -416,8 +416,70 @@ async function runTests() {
     }
     console.log(`✓ Google Sign-In verified for customer: ${googleRes.body.user.name} (Role: ${googleRes.body.user.role})`);
 
+    // 33. Test Notice Board (Owner Edit Only, Customer Read-Only, Inactive/Active Visibility)
+    console.log('\n--- TESTING NOTICE BOARD (OWNER EDIT ONLY, CUSTOMER VIEW ONLY) ---');
+    // Owner sets notice
+    const setNoticeRes = await request('PUT', '/api/notice', { 'Authorization': `Bearer ${ownerToken}` }, {
+      title: 'दिवाळी सुट्टी व नवीन माल सूचना',
+      message: 'सर्व ग्राहकांना कळविण्यात येते की, नवीन सरकी पेंड उपलब्ध आहे.',
+      active: true
+    });
+    if (setNoticeRes.status !== 200 || !setNoticeRes.body.ok) {
+      throw new Error('Owner setting notice failed: ' + JSON.stringify(setNoticeRes.body));
+    }
+    console.log('✓ Owner set notice successfully');
+
+    // Customer reads active notice
+    const custGetNotice = await request('GET', '/api/notice', { 'Authorization': `Bearer ${customerToken}` });
+    if (custGetNotice.status !== 200 || !custGetNotice.body.notice || custGetNotice.body.notice.title !== 'दिवाळी सुट्टी व नवीन माल सूचना') {
+      throw new Error('Customer read notice failed: ' + JSON.stringify(custGetNotice.body));
+    }
+    console.log('✓ Customer successfully read active notice from notice board');
+
+    // Customer attempts to edit notice -> MUST be 403 Forbidden
+    const custEditNotice = await request('PUT', '/api/notice', { 'Authorization': `Bearer ${customerToken}` }, {
+      title: 'Unauthorized edit',
+      message: 'This should fail'
+    });
+    if (custEditNotice.status !== 403) {
+      throw new Error(`Customer unauthorized edit should be 403, got: ${custEditNotice.status}`);
+    }
+    console.log('✓ Security Verified: Customer blocked from editing notice board (403 Forbidden)');
+
+    // Customer attempts to delete notice -> MUST be 403 Forbidden
+    const custDelNotice = await request('DELETE', '/api/notice', { 'Authorization': `Bearer ${customerToken}` });
+    if (custDelNotice.status !== 403) {
+      throw new Error(`Customer unauthorized delete should be 403, got: ${custDelNotice.status}`);
+    }
+    console.log('✓ Security Verified: Customer blocked from clearing notice board (403 Forbidden)');
+
+    // Owner clears/deactivates notice
+    const ownerDelNotice = await request('DELETE', '/api/notice', { 'Authorization': `Bearer ${ownerToken}` });
+    if (ownerDelNotice.status !== 200 || !ownerDelNotice.body.ok) {
+      throw new Error('Owner clear notice failed: ' + JSON.stringify(ownerDelNotice.body));
+    }
+    console.log('✓ Owner successfully cleared notice');
+
+    // Customer reads notice after deactivation -> should be null
+    const custGetInactive = await request('GET', '/api/notice', { 'Authorization': `Bearer ${customerToken}` });
+    if (custGetInactive.status !== 200 || custGetInactive.body.notice !== null) {
+      throw new Error('Inactive notice should be null for customer: ' + JSON.stringify(custGetInactive.body));
+    }
+    console.log('✓ Inactive notice cleanly hidden from customers (notice: null)');
+
+    // Owner reactivates notice
+    const reactivateRes = await request('PUT', '/api/notice', { 'Authorization': `Bearer ${ownerToken}` }, {
+      title: 'श्रावण ट्रेडर्स महत्त्वाची सूचना',
+      message: 'सर्व शेतकरी बांधवांचे स्वागत आहे! आमचे नवीन दर व उत्तम प्रतीचा पशुआहार उपलब्ध आहे.',
+      active: true
+    });
+    if (reactivateRes.status !== 200 || !reactivateRes.body.ok) {
+      throw new Error('Owner reactivate notice failed: ' + JSON.stringify(reactivateRes.body));
+    }
+    console.log('✓ Owner successfully reactivated notice board announcement');
+
     console.log('\n========================================================================');
-    console.log('🎉 ALL AUTOMATED TESTS PASSED (AUTH, PASSWORDS, BILL EDIT, DELETION, RESTORE, MIXED PAYMENTS, HISTORY & GOOGLE SIGN-IN)! 🎉');
+    console.log('🎉 ALL AUTOMATED TESTS PASSED (AUTH, PASSWORDS, BILL EDIT, DELETION, RESTORE, MIXED PAYMENTS, HISTORY, GOOGLE SIGN-IN & NOTICE BOARD)! 🎉');
     console.log('========================================================================\n');
 
   } finally {
