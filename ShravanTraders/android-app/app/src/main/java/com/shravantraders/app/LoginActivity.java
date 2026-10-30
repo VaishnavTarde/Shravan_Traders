@@ -36,6 +36,8 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Api.wakeUpServer(this);
+
         lang = LocaleHelper.getLanguage(this);
 
         if (!Api.token(this).isEmpty()) {

@@ -34,32 +34,21 @@ public class LocaleHelper {
     }
 
     public static String getThemeMode(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        return prefs.getString(KEY_THEME, "light"); // Default Light mode for clear readability
+        return "light";
     }
 
     public static void setThemeMode(Context context, String themeMode) {
         SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        prefs.edit().putString(KEY_THEME, themeMode).apply();
-        applyThemeMode(themeMode);
+        prefs.edit().putString(KEY_THEME, "light").apply();
+        applyThemeMode("light");
     }
 
     public static boolean isDarkMode(Context context) {
-        String mode = getThemeMode(context);
-        if ("dark".equalsIgnoreCase(mode)) return true;
-        if ("light".equalsIgnoreCase(mode)) return false;
-        int currentNightMode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        return currentNightMode == Configuration.UI_MODE_NIGHT_YES;
+        return false;
     }
 
     private static void applyThemeMode(String themeMode) {
-        if ("dark".equalsIgnoreCase(themeMode)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else if ("light".equalsIgnoreCase(themeMode)) {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
-        } else {
-            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
-        }
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
     }
 
     public static Context setLocale(Context context, String language) {

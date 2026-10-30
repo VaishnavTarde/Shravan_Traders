@@ -317,17 +317,6 @@ public class DashboardActivity extends AppCompatActivity {
             recreate();
         });
 
-        TextView themeBtn = new TextView(this);
-        themeBtn.setText(isDark ? "☀️" : "🌙");
-        themeBtn.setTextSize(16);
-        themeBtn.setTextColor(Color.WHITE);
-        themeBtn.setPadding(dp(8), dp(4), dp(8), dp(4));
-        themeBtn.setOnClickListener(v -> {
-            String newTheme = isDark ? "light" : "dark";
-            LocaleHelper.setThemeMode(this, newTheme);
-            recreate();
-        });
-
         TextView menuBtn = new TextView(this);
         menuBtn.setText("⚙");
         menuBtn.setTextSize(22);
@@ -366,7 +355,6 @@ public class DashboardActivity extends AppCompatActivity {
 
         appBar.addView(roleBadgeView);
         appBar.addView(langBtn);
-        appBar.addView(themeBtn);
         appBar.addView(menuBtn);
         appBar.addView(logoutTopBtn);
 
@@ -5576,7 +5564,7 @@ public class DashboardActivity extends AppCompatActivity {
             optsCard.addView(buildOptionRow("📊", "Reports & Analytics", "Daily, weekly, monthly, yearly reports", this::loadReportsView));
             optsCard.addView(buildOptionRow("💳", "Expenses Management", "Record shop expenses", () -> Toast.makeText(this, "Expense management pending.", Toast.LENGTH_SHORT).show()));
             optsCard.addView(buildOptionRow("☁️", "Backup & Sync", "Cloud backup, data sync", () -> Toast.makeText(this, "Data is synced to MongoDB Atlas.", Toast.LENGTH_SHORT).show()));
-            optsCard.addView(buildOptionRow("🌐", "App Settings", "Language, theme, user management", () -> {
+            optsCard.addView(buildOptionRow("🌐", "App Settings", "Language, user management", () -> {
                 LocaleHelper.setLanguage(this, currentLang.equals("mr") ? "en" : "mr");
                 recreate();
             }));
@@ -5606,10 +5594,7 @@ public class DashboardActivity extends AppCompatActivity {
                 LocaleHelper.setLanguage(this, currentLang.equals("mr") ? "en" : "mr");
                 recreate();
             }));
-            custOptsCard.addView(buildOptionRow("🌙", currentLang.equals("mr") ? "थीम बदला (Dark/Light Mode)" : "Toggle Theme", currentLang.equals("mr") ? "डार्क किंवा लाईट मोड" : "Switch dark or light mode", () -> {
-                LocaleHelper.setThemeMode(this, LocaleHelper.isDarkMode(this) ? "light" : "dark");
-                recreate();
-            }));
+
             custOptsCard.addView(buildOptionRow("🚪", currentLang.equals("mr") ? "लॉगआउट करा (Sign Out)" : "Logout", currentLang.equals("mr") ? "खात्यातून सुरक्षितपणे बाहेर पडा" : "Sign out securely from customer account", () -> {
                 new AlertDialog.Builder(this)
                     .setTitle(currentLang.equals("mr") ? "लॉगआउट" : "Logout")

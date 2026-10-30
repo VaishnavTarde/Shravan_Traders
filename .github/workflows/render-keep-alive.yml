@@ -1,0 +1,15 @@
+name: Render Keep Alive
+
+on:
+  schedule:
+    # Ping every 14 minutes to keep Render free tier awake (15-minute inactivity limit)
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          curl -s -S --max-time 60 "https://shravan-traders-backend.onrender.com/api/health" || true

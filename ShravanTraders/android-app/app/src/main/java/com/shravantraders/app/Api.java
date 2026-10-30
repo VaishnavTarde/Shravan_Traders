@@ -35,6 +35,22 @@ public final class Api {
                 .apply();
     }
 
+    public static void wakeUpServer(Context context) {
+        new Thread(() -> {
+            try {
+                String baseUrl = getBaseUrl(context);
+                URL url = new URL(baseUrl + "/api/health");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(45000);
+                conn.setReadTimeout(45000);
+                conn.getResponseCode();
+                conn.disconnect();
+            } catch (Exception ignored) {
+            }
+        }).start();
+    }
+
     public static String resolveImageUrl(Context context, String rawUrl) {
         if (rawUrl == null || rawUrl.trim().isEmpty()) return "";
         String url = rawUrl.trim();
@@ -125,8 +141,8 @@ public final class Api {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
         connection.setRequestMethod(method);
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(15000);
+        connection.setConnectTimeout(40000);
+        connection.setReadTimeout(40000);
         connection.setRequestProperty("Accept", "application/json");
 
         String savedToken = token(context);

@@ -27,6 +27,9 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Pre-warm / wake up Render backend immediately on app launch
+        Api.wakeUpServer(this);
+
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#FFF9F2")); // Warm cream background matching artwork
 

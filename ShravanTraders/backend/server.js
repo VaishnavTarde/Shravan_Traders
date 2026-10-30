@@ -74,3 +74,26 @@ async function startDatabase() {
 }
 
 startDatabase();
+
+// Keep-alive: Ping Render backend every 14 minutes to prevent free-tier 15-minute idle spin-down
+const PING_INTERVAL = 14 * 60 * 1000;
+const PING_URL = process.env.RENDER_EXTERNAL_URL
+  ? `${process.env.RENDER_EXTERNAL_URL}/api/health`
+  : 'https://shravan-traders-backend.onrender.com/api/health';
+
+if (process.env.NODE_ENV === 'production' || process.env.RENDER || PING_URL.includes('onrender.com')) {
+  setInterval(() => {
+    try {
+      const https = require('https');
+      const http = require('http');
+      const client = PING_URL.startsWith('https') ? https : http;
+      client.get(PING_URL, (res) => {
+        console.log(`[Keep-Alive] Pinged backend at ${new Date().toISOString()} - Status: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.warn(`[Keep-Alive] Ping note: ${err.message}`);
+      });
+    } catch (e) {
+      console.warn(`[Keep-Alive] Exception: ${e.message}`);
+    }
+  }, PING_INTERVAL);
+}
